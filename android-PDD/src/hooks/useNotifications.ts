@@ -194,14 +194,26 @@ export const useNotifications = () => {
             const oldCase = payload.old as any;
             if (payload.eventType === 'INSERT') {
               console.log('Push Notification: New Case Alert', newCase.patient_name);
+              sendLocalNotification(
+                '🩺 New Case Created',
+                `Case for ${newCase.patient_name || 'Patient'} (Tooth #${newCase.tooth_number}) has been created.`
+              );
             } else if (payload.eventType === 'UPDATE' && newCase.status !== oldCase?.status) {
               // Notify doctor when their lab request is accepted/completed
               if (newCase.status === 'lab-received') {
+                sendLocalNotification(
+                  '🔬 Case Accepted by Lab',
+                  `The lab has accepted the case for ${newCase.patient_name || 'Patient'} and started work.`
+                );
                 DeviceEventEmitter.emit('caseStatusUpdate', {
                   patientName: newCase.patient_name,
                   status: 'Lab accepted your request and started work',
                 });
               } else if (newCase.status === 'completed') {
+                sendLocalNotification(
+                  '✅ Lab Work Completed',
+                  `Lab work is completed for ${newCase.patient_name || 'Patient'} — ready for delivery.`
+                );
                 DeviceEventEmitter.emit('caseStatusUpdate', {
                   patientName: newCase.patient_name,
                   status: 'Lab work completed — ready for delivery',

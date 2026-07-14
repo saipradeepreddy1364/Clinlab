@@ -37,11 +37,7 @@ if (Platform.OS === 'android') {
 export async function registerForPushNotificationsAsync() {
   if (Platform.OS === 'web') return null;
 
-  if (!Device.isDevice) {
-    console.log('[Notifications] Must use a physical device for push notifications.');
-    return null;
-  }
-
+  // Request permissions (works on both emulator and physical device)
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
 
@@ -51,7 +47,12 @@ export async function registerForPushNotificationsAsync() {
   }
 
   if (finalStatus !== 'granted') {
-    console.warn('[Notifications] Permission denied — push notifications will not work.');
+    console.warn('[Notifications] Permission denied — notifications will not work.');
+    return null;
+  }
+
+  if (!Device.isDevice) {
+    console.log('[Notifications] Running on emulator/simulator — skipping Expo push token.');
     return null;
   }
 
