@@ -300,10 +300,12 @@ def generate_excel_report(run_results=None):
         ws.column_dimensions[col_letter].width = width
 
     try:
-        wb.save("clinlab_e2e_web_test_report_400.xlsx")
-        print("Report generated successfully as 'clinlab_e2e_web_test_report_400.xlsx'")
+        wb.save("selenium_test.xlsx")
+        print("Report generated successfully as 'selenium_test.xlsx'")
     except PermissionError as e:
-        print(f"Error saving file: {e}")
+        # Fallback if locked
+        wb.save("selenium_test_report.xlsx")
+        print("Permission denied on 'selenium_test.xlsx' (file is open). Saved as 'selenium_test_report.xlsx' instead.")
 
 if __name__ == "__main__":
     generate_excel_report()
