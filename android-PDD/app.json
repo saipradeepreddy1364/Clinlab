@@ -1,0 +1,60 @@
+{
+  "expo": {
+    "name": "ClinLab AI Assist",
+    "slug": "clinlab-ai-assist",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./public/favicon.png",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/a8e8fa5b-47b5-4f19-9e38-09a77ae852f3"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.clinlab.aiassist",
+      "infoPlist": {
+        "NSUserNotificationUsageDescription": "ClinLab uses notifications to alert you about pending approvals and clinical updates in real time."
+      }
+    },
+    "android": {
+      "package": "com.clinlab.aiassist",
+      "adaptiveIcon": {
+        "foregroundImage": "./public/favicon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "WAKE_LOCK",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
+    },
+    "web": {
+      "favicon": "./public/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./public/favicon.png",
+          "color": "#0EA5E9",
+          "defaultChannel": "clinlab-alerts",
+          "sounds": []
+        }
+      ],
+      "expo-status-bar"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a8e8fa5b-47b5-4f19-9e38-09a77ae852f3"
+      }
+    }
+  }
+}
