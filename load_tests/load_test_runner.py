@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from generate_load_report import generate_load_report
 
 # Configuration
-TARGET_URL = "https://clinlab-ai-assist.vercel.app"
+TARGET_URL = "https://clinlab.vercel.app"
 API_URL = "https://pdd-backend-ztqc.onrender.com"
 DURATION = 60       # seconds
 VIRTUAL_USERS = 100 # concurrent threads
