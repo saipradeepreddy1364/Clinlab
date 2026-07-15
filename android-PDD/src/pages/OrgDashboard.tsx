@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Platform, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Platform, Alert, Image } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useAppData } from "@/lib/AppDataContext";
 import {
@@ -273,7 +273,11 @@ const OrgDashboard = ({ route }: any) => {
                 onPress={() => navigation.navigate("OrgDoctors")}
               >
                 <View style={styles.drAvatar}>
-                  <Text style={styles.drAvatarText}>{dr.full_name?.charAt(0)}</Text>
+                  {dr.avatar_url ? (
+                    <Image source={{ uri: dr.avatar_url }} style={styles.drAvatarImage} />
+                  ) : (
+                    <Text style={styles.drAvatarText}>{dr.full_name?.charAt(0)}</Text>
+                  )}
                 </View>
                 <Text style={styles.drName} numberOfLines={1}>{dr.full_name}</Text>
                 <Text style={styles.drSpecialty}>Doctor</Text>
@@ -522,6 +526,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#0EA5E9",
+  },
+  drAvatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
   },
   drName: {
     fontSize: 14,
