@@ -99,11 +99,11 @@ const SplashScreen = () => {
       // Navigate only after BOTH data is ready AND 4 seconds have passed
       if (authResult.session) {
         if (authResult.role === 'organization') {
-          navigation.replace("OrgDashboard");
+          navigation.replace("OrgDashboard", { preloaded: true });
         } else if (authResult.role === 'lab') {
-          navigation.replace("LabDashboard");
+          navigation.replace("LabDashboard", { preloaded: true });
         } else {
-          navigation.replace("Dashboard");
+          navigation.replace("Dashboard", { preloaded: true });
         }
       } else {
         navigation.replace("Login");
