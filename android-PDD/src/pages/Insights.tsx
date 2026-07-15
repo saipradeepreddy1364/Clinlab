@@ -510,6 +510,7 @@ const styles = StyleSheet.create({
   },
   heroContent: {
     flex: 1,
+    paddingRight: 80,
     zIndex: 2,
   },
   heroTitle: {
@@ -523,7 +524,6 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.8)",
     lineHeight: 20,
     marginBottom: 16,
-    paddingRight: 20,
   },
   heroButton: {
     backgroundColor: "#FFFFFF",
@@ -539,8 +539,10 @@ const styles = StyleSheet.create({
   },
   heroGraphic: {
     position: "absolute",
-    right: -20,
-    bottom: -20,
+    right: 24,
+    top: 24,
+    bottom: 24,
+    justifyContent: "center",
     zIndex: 1,
   },
   editProfileButton: {
