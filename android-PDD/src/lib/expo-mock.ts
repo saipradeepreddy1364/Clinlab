@@ -36,3 +36,21 @@ export class CodedError extends Error {
   }
 }
 
+// PermissionStatus — required by expo core re-exports
+export enum PermissionStatus {
+  GRANTED = 'granted',
+  DENIED = 'denied',
+  UNDETERMINED = 'undetermined',
+}
+export type PermissionExpiration = 'never' | number;
+export type PermissionResponse = {
+  status: PermissionStatus;
+  expires: PermissionExpiration;
+  granted: boolean;
+  canAskAgain: boolean;
+};
+
+// Stubs for expo-image-picker (used via dynamic import on mobile only)
+export const MediaTypeOptions = { Images: 'Images', Videos: 'Videos', All: 'All' };
+export const requestMediaLibraryPermissionsAsync = async () => ({ status: PermissionStatus.GRANTED, granted: true, canAskAgain: true, expires: 'never' });
+export const launchImageLibraryAsync = async () => ({ canceled: true, assets: [] });

@@ -43,7 +43,6 @@ const Signup = () => {
   });
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [profileImage, setProfileImage] = useState<{ uri: string; base64?: string } | null>(null);
-  const webImageInputRef = useRef<HTMLInputElement | null>(null);
 
   // Auto-fill logic for returning unverified users
   useEffect(() => {
@@ -557,6 +556,55 @@ const Signup = () => {
     setTempUserId(null);
     showAlert("Registration Cancelled", "The verification process was aborted and your temporary details have been removed.");
     navigation.navigate("Login");
+  };
+
+  const pickProfileImage = async () => {
+    if (Platform.OS === 'web') {
+      // Web: attach to DOM first to avoid blank page
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.style.display = 'none';
+      document.body.appendChild(input);
+      input.onchange = async (e: any) => {
+        const file = e.target.files[0];
+        document.body.removeChild(input);
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const dataUrl = ev.target?.result as string;
+          const base64 = dataUrl.split(',')[1];
+          setProfileImage({ uri: dataUrl, base64 });
+        };
+        reader.readAsDataURL(file);
+      };
+      input.oncancel = () => document.body.removeChild(input);
+      input.click();
+      return;
+    }
+    // Mobile: use expo-document-picker (already in native build — OTA safe)
+    try {
+      const { getDocumentAsync } = await import('expo-document-picker');
+      const result = await getDocumentAsync({
+        type: 'image/*',
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled && result.assets?.[0]) {
+        const uri = result.assets[0].uri;
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onload = (e: any) => {
+          const dataUrl = e.target.result as string;
+          const base64 = dataUrl.split(',')[1];
+          setProfileImage({ uri, base64 });
+        };
+        reader.readAsDataURL(blob);
+      }
+    } catch (err) {
+      console.error('Image picker error:', err);
+      Alert.alert('Error', 'Could not open image picker. Please try again.');
+    }
   };
 
   return (

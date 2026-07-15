@@ -135,48 +135,51 @@ const Insights = () => {
 
   const pickAvatar = async () => {
     if (Platform.OS === 'web') {
-      // Web: use hidden file input
-      if (!webFileInputRef.current) {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = async (e: any) => {
-          const file = e.target.files[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = (ev) => {
-            const base64 = (ev.target?.result as string).split(',')[1];
-            setEditingAvatar({ uri: ev.target?.result as string, base64 });
-          };
-          reader.readAsDataURL(file);
+      // Always create a fresh input so onChange fires reliably on re-select
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.style.display = 'none';
+      document.body.appendChild(input);
+      input.onchange = async (e: any) => {
+        const file = e.target.files[0];
+        document.body.removeChild(input);
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const dataUrl = ev.target?.result as string;
+          const base64 = dataUrl.split(',')[1];
+          setEditingAvatar({ uri: dataUrl, base64 });
         };
-        webFileInputRef.current = input;
-      }
-      webFileInputRef.current.click();
+        reader.readAsDataURL(file);
+      };
+      input.oncancel = () => document.body.removeChild(input);
+      input.click();
       return;
     }
-    // Mobile: use expo-image-picker
+    // Mobile: use expo-document-picker (already in native build — OTA safe)
     try {
-      const { launchImageLibraryAsync, requestMediaLibraryPermissionsAsync, MediaTypeOptions } = await import('expo-image-picker');
-      const { status } = await requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please allow access to your photo library in Settings.');
-        return;
-      }
-      const result = await launchImageLibraryAsync({
-        mediaTypes: MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.7,
-        base64: true,
+      const { getDocumentAsync } = await import('expo-document-picker');
+      const result = await getDocumentAsync({
+        type: 'image/*',
+        copyToCacheDirectory: true,
       });
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        setEditingAvatar({ uri: asset.uri, base64: asset.base64 || undefined });
+      if (!result.canceled && result.assets?.[0]) {
+        const uri = result.assets[0].uri;
+        // Convert URI to base64 via blob (works in Expo)
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onload = (e: any) => {
+          const dataUrl = e.target.result as string;
+          const base64 = dataUrl.split(',')[1];
+          setEditingAvatar({ uri, base64 });
+        };
+        reader.readAsDataURL(blob);
       }
     } catch (err) {
       console.error('Image picker error:', err);
-      Alert.alert('Error', 'Could not open image picker.');
+      Alert.alert('Error', 'Could not open image picker. Please try again.');
     }
   };
 
