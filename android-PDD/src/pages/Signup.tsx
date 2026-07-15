@@ -582,24 +582,25 @@ const Signup = () => {
       input.oncancel = () => document.body.removeChild(input);
       input.click();
       return;
-    }
-    // Mobile: use expo-document-picker (natively bundled in existing APK, OTA safe)
+    // Mobile: Try expo-image-picker first (allows native cropping)
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'image/*',
-        copyToCacheDirectory: true,
-      });
-      if (!result.canceled && result.assets?.[0]) {
-        const uri = result.assets[0].uri;
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const reader = new FileReader();
-        reader.onload = (e: any) => {
-          const dataUrl = e.target.result as string;
-          const base64 = dataUrl.split(',')[1];
-          setProfileImage({ uri, base64 });
-        };
-        reader.readAsDataURL(blob);
+      const ImagePicker = await import('expo-image-picker');
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status === 'granted') {
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.7,
+          base64: true,
+        });
+        if (!result.canceled && result.assets?.[0]) {
+          const asset = result.assets[0];
+          setProfileImage({ uri: asset.uri, base64: asset.base64 || undefined });
+          return;
+        }
+      } else {
+         Alert.alert('Permission Required', 'Please allow access to your photo library in Settings.');
       }
     } catch (err: any) {
       console.error('Mobile image picker error:', err);
