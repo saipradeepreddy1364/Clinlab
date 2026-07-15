@@ -252,15 +252,13 @@ const Insights = () => {
           animationType="slide"
           onRequestClose={() => setEditModalVisible(false)}
         >
-          <TouchableOpacity 
-            style={styles.modalOverlay} 
-            activeOpacity={1} 
-            onPress={() => setEditModalVisible(false)}
-          >
-            <View 
-              style={styles.modalContent} 
-              onStartShouldSetResponder={() => true}
-            >
+          <View style={styles.modalContainer}>
+            <TouchableOpacity 
+              style={styles.modalOverlay} 
+              activeOpacity={1} 
+              onPress={() => setEditModalVisible(false)}
+            />
+            <View style={styles.modalContent}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <Text style={styles.modalHeader}>Edit Profile</Text>
                 {profile && (
@@ -377,7 +375,7 @@ const Insights = () => {
                 </View>
               </ScrollView>
             </View>
-          </TouchableOpacity>
+          </View>
         </Modal>
 
         {/* Organization Select Modal */}
@@ -387,15 +385,13 @@ const Insights = () => {
           animationType="slide"
           onRequestClose={() => { setOrgModalVisible(false); setSearchQuery(""); }}
         >
-          <TouchableOpacity 
-            style={styles.modalOverlay} 
-            activeOpacity={1} 
-            onPress={() => { setOrgModalVisible(false); setSearchQuery(""); }}
-          >
-            <View 
-              style={styles.modalContent} 
-              onStartShouldSetResponder={() => true}
-            >
+          <View style={styles.modalContainer}>
+            <TouchableOpacity 
+              style={styles.modalOverlay} 
+              activeOpacity={1} 
+              onPress={() => { setOrgModalVisible(false); setSearchQuery(""); }}
+            />
+            <View style={styles.modalContent}>
               <Text style={styles.modalHeader}>Select Organization</Text>
               
               <View style={styles.searchContainer}>
@@ -441,7 +437,7 @@ const Insights = () => {
                 </ScrollView>
               </View>
             </View>
-          </TouchableOpacity>
+          </View>
         </Modal>
 
       </ScrollView>
@@ -560,10 +556,17 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#0EA5E9",
   },
-  modalOverlay: {
+  modalContainer: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContent: {
     backgroundColor: "#FFFFFF",
