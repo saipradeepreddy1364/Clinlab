@@ -176,9 +176,9 @@ const Insights = () => {
         };
         reader.readAsDataURL(blob);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Mobile image picker error:', err);
-      Alert.alert('Error', 'Could not open image picker. Please try again.');
+      Alert.alert('Error', `Could not open image picker: ${err.message || err.toString()}`);
     }
   };
 
