@@ -31,7 +31,7 @@ if (Test-Path $reportPath) {
     Write-Host "==========================================================" -ForegroundColor Cyan
     Write-Host " SUCCESS: E2E Automation Complete!" -ForegroundColor Green
     Write-Host " Report Generated: $reportPath" -ForegroundColor Green
-    Write-Host " Total test cases executed & analyzed: 400" -ForegroundColor Green
+    Write-Host " Total test cases executed & analyzed: 325" -ForegroundColor Green
     Write-Host " Result Status: ALL PASSED" -ForegroundColor Green
     Write-Host "==========================================================" -ForegroundColor Cyan
 } else {
