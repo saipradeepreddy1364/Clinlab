@@ -1,14 +1,38 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import React, { useState, useEffect } from "react";
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  Modal, 
+  TextInput, 
+  ActivityIndicator, 
+  Alert, 
+  Platform 
+} from "react-native";
 import {
   BarChart3,
   Clock,
   Activity,
-  Target
+  Target,
+  ChevronDown,
+  Search
 } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
 import { supabase } from "@/lib/supabase";
 import AppLayout from "@/components/AppLayout";
+
+const showAlert = (title: string, message: string, actions?: any[]) => {
+  if (Platform.OS === 'web') {
+    window.alert(`${title}: ${message}`);
+    if (actions && actions[0] && actions[0].onPress) {
+      actions[0].onPress();
+    }
+  } else {
+    Alert.alert(title, message, actions);
+  }
+};
 
 const Insights = () => {
   const navigation = useNavigation<any>();
@@ -19,18 +43,38 @@ const Insights = () => {
     completed: 0,
   });
 
-  React.useEffect(() => {
+  const [profile, setProfile] = useState<any>(null);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingName, setEditingName] = useState("");
+  const [editingPhone, setEditingPhone] = useState("");
+  const [editingSpecialization, setEditingSpecialization] = useState("");
+  const [editingOrg, setEditingOrg] = useState({ id: "", name: "" });
+
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [orgModalVisible, setOrgModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [loadingOrgs, setLoadingOrgs] = useState(false);
+
+  useEffect(() => {
     const fetchMetrics = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: profile } = await supabase
+      const { data: profileData } = await supabase
         .from('profiles')
-        .select('role')
+        .select('*')
         .eq('id', user.id)
         .single();
 
-      const role = profile?.role || 'doctor';
+      if (profileData) {
+        setProfile((prev: any) => {
+          if (editModalVisible) return prev;
+          return profileData;
+        });
+      }
+
+      const role = profileData?.role || 'doctor';
 
       let query = supabase.from('cases').select('status');
       if (role === 'organization') {
@@ -54,7 +98,88 @@ const Insights = () => {
     fetchMetrics();
     const interval = setInterval(fetchMetrics, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [editModalVisible]);
+
+  const fetchOrganizations = async () => {
+    setLoadingOrgs(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('role', 'organization');
+      if (error) throw error;
+      if (data) {
+        setOrganizations(data);
+      }
+    } catch (err) {
+      console.error("Error fetching organizations:", err);
+    } finally {
+      setLoadingOrgs(false);
+    }
+  };
+
+  const handleOpenEditProfile = () => {
+    if (!profile) return;
+    setEditingName(profile.full_name || "");
+    setEditingPhone(profile.phone || "");
+    setEditingSpecialization(profile.specialization || "");
+    setEditingOrg({ id: profile.org_id || "", name: profile.org_name || "" });
+    setEditModalVisible(true);
+    fetchOrganizations();
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!editingName.trim()) {
+      showAlert("Validation Error", "Name cannot be empty.");
+      return;
+    }
+    if (!editingPhone.trim()) {
+      showAlert("Validation Error", "Phone number cannot be empty.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        showAlert("Error", "No active user session found.");
+        return;
+      }
+
+      const updateData: any = {
+        full_name: editingName.trim(),
+        phone: editingPhone.trim(),
+      };
+
+      if (profile.role === 'doctor') {
+        updateData.specialization = editingSpecialization.trim();
+        updateData.org_id = editingOrg.id || null;
+        updateData.org_name = editingOrg.name || null;
+      } else if (profile.role === 'lab') {
+        updateData.org_id = editingOrg.id || null;
+        updateData.org_name = editingOrg.name || null;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Update local profile state
+      const updatedProfile = { ...profile, ...updateData };
+      setProfile(updatedProfile);
+
+      showAlert("Success", "Profile updated successfully.");
+      setEditModalVisible(false);
+    } catch (err: any) {
+      console.error("Error updating profile:", err);
+      showAlert("Update Failed", err.message || "An error occurred while updating your profile.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const stats = [
     { label: "Total Cases", value: metrics.total.toString(), icon: Activity, color: "#0EA5E9" },
@@ -76,10 +201,18 @@ const Insights = () => {
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1, paddingRight: 8 }}>
             <Text style={styles.title}>Clinical Insights</Text>
             <Text style={styles.subtitle}>Your practice performance & clinical metrics</Text>
           </View>
+          {profile && (
+            <TouchableOpacity 
+              style={styles.editProfileButton}
+              onPress={handleOpenEditProfile}
+            >
+              <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.statsGrid}>
@@ -111,6 +244,206 @@ const Insights = () => {
             <BarChart3 size={80} color="#FFFFFF" opacity={0.8} />
           </View>
         </View>
+
+        {/* Edit Profile Modal */}
+        <Modal 
+          visible={editModalVisible} 
+          transparent 
+          animationType="slide"
+          onRequestClose={() => setEditModalVisible(false)}
+        >
+          <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setEditModalVisible(false)}
+          >
+            <View 
+              style={styles.modalContent} 
+              onStartShouldSetResponder={() => true}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Text style={styles.modalHeader}>Edit Profile</Text>
+                {profile && (
+                  <View style={[
+                    styles.roleBadge, 
+                    profile.role === "organization" 
+                      ? styles.roleBadgeOrg 
+                      : (profile.role === "lab" ? styles.roleBadgeLab : styles.roleBadgeDr)
+                  ]}>
+                    <Text style={[
+                      styles.roleBadgeText,
+                      { color: profile.role === "organization" ? "#64748B" : (profile.role === "lab" ? "#4F46E5" : "#0369A1") }
+                    ]}>{profile.role}</Text>
+                  </View>
+                )}
+              </View>
+
+              <ScrollView 
+                nestedScrollEnabled={true}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ gap: 16, paddingBottom: 24 }}
+              >
+                {/* Full Name / Organization Name field */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>
+                    {profile?.role === "organization" ? "Organization Name" : "Full Name"}
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter name"
+                    value={editingName}
+                    onChangeText={setEditingName}
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
+
+                {/* Email field (Disabled) */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Email Address (Read-only)</Text>
+                  <TextInput
+                    style={[styles.input, styles.disabledInput]}
+                    value={profile?.email || ""}
+                    editable={false}
+                    selectTextOnFocus={false}
+                  />
+                  <Text style={styles.disabledText}>
+                    Email cannot be edited because your cases and reports are associated with it.
+                  </Text>
+                </View>
+
+                {/* Phone field */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Phone Number</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter phone number"
+                    keyboardType="phone-pad"
+                    value={editingPhone}
+                    onChangeText={setEditingPhone}
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
+
+                {/* Specialization field (Doctor only) */}
+                {profile?.role === "doctor" && (
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Specialization</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g. Orthodontist"
+                      value={editingSpecialization}
+                      onChangeText={setEditingSpecialization}
+                      placeholderTextColor="#94A3B8"
+                    />
+                  </View>
+                )}
+
+                {/* Organization field (Doctor / Lab only) */}
+                {(profile?.role === "doctor" || profile?.role === "lab") && (
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Select Organization</Text>
+                    <TouchableOpacity 
+                      style={styles.pickerTrigger}
+                      onPress={() => setOrgModalVisible(true)}
+                    >
+                      <Text style={styles.pickerValue} numberOfLines={2}>
+                        {editingOrg.name || "Choose Clinic/Hospital"}
+                      </Text>
+                      <ChevronDown size={18} color="#64748B" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Buttons */}
+                <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
+                  <TouchableOpacity 
+                    style={[styles.modalButton, styles.cancelButton]}
+                    onPress={() => setEditModalVisible(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.modalButton, styles.saveButton, saving && styles.buttonDisabled]}
+                    onPress={handleUpdateProfile}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.saveButtonText}>Save Changes</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Organization Select Modal */}
+        <Modal 
+          visible={orgModalVisible} 
+          transparent 
+          animationType="slide"
+          onRequestClose={() => { setOrgModalVisible(false); setSearchQuery(""); }}
+        >
+          <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => { setOrgModalVisible(false); setSearchQuery(""); }}
+          >
+            <View 
+              style={styles.modalContent} 
+              onStartShouldSetResponder={() => true}
+            >
+              <Text style={styles.modalHeader}>Select Organization</Text>
+              
+              <View style={styles.searchContainer}>
+                <Search size={18} color="#94A3B8" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search clinic name..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+
+              <View style={{ maxHeight: 300 }}>
+                <ScrollView 
+                  nestedScrollEnabled={true}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                >
+                  {loadingOrgs ? (
+                    <ActivityIndicator size="small" color="#0EA5E9" style={{ margin: 20 }} />
+                  ) : organizations.length > 0 ? (
+                    organizations
+                      .filter(org => org.full_name?.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .map(org => (
+                        <TouchableOpacity 
+                          key={org.id} 
+                          style={styles.modalOption}
+                          onPress={() => {
+                            setEditingOrg({ id: org.id, name: org.full_name });
+                            setOrgModalVisible(false);
+                            setSearchQuery("");
+                          }}
+                        >
+                          <Text style={styles.modalOptionText}>{org.full_name}</Text>
+                        </TouchableOpacity>
+                      ))
+                  ) : (
+                    <View style={styles.emptyState}>
+                      <Text style={styles.noData}>No organizations found.</Text>
+                    </View>
+                  )}
+                </ScrollView>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
       </ScrollView>
     </AppLayout>
   );
@@ -213,6 +546,162 @@ const styles = StyleSheet.create({
     right: -20,
     bottom: -20,
     zIndex: 1,
+  },
+  editProfileButton: {
+    backgroundColor: "#0EA5E915",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#0EA5E930",
+  },
+  editProfileButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#0EA5E9",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    gap: 12,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  roleBadge: { 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    borderRadius: 4, 
+    alignSelf: 'flex-start' 
+  },
+  roleBadgeOrg: { backgroundColor: "#F1F5F9" },
+  roleBadgeDr: { backgroundColor: "#E0F2FE" },
+  roleBadgeLab: { backgroundColor: "#EEF2FF" },
+  roleBadgeText: { fontSize: 10, fontWeight: "700", textTransform: "uppercase" },
+  inputGroup: {
+    gap: 6,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#475569",
+  },
+  input: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: "#0F172A",
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : {}) as any,
+  },
+  disabledInput: {
+    backgroundColor: "#F1F5F9",
+    borderColor: "#E2E8F0",
+    color: "#64748B",
+  },
+  disabledText: {
+    fontSize: 11,
+    color: "#94A3B8",
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  pickerTrigger: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  pickerValue: {
+    fontSize: 14,
+    color: "#0F172A",
+    flex: 1,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
+    marginBottom: 8,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#0F172A",
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : {}) as any,
+  },
+  modalOption: {
+    minHeight: 50,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  modalOptionText: {
+    fontSize: 14,
+    color: "#0F172A",
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  emptyState: {
+    padding: 16,
+    alignItems: "center",
+  },
+  noData: {
+    textAlign: "center",
+    color: "#64748B",
+    fontSize: 14,
+  },
+  modalButton: {
+    flex: 1,
+    height: 46,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelButton: {
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  cancelButtonText: {
+    color: "#64748B",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  saveButton: {
+    backgroundColor: "#0EA5E9",
+  },
+  saveButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
 });
 
