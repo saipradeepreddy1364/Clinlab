@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Platform, Alert, Modal, Pressable } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Platform, Alert, Modal, Pressable, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Search, Loader2, User, Mail, Phone, Calendar, ShieldCheck, MoreVertical, Ban, UserMinus, CheckCircle2 } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
@@ -161,7 +161,11 @@ const OrgDoctors = () => {
               >
                 <View style={styles.cardHeader}>
                   <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{d.full_name?.charAt(0)}</Text>
+                    {d.avatar_url ? (
+                      <Image source={{ uri: d.avatar_url }} style={styles.avatarImage} />
+                    ) : (
+                      <Text style={styles.avatarText}>{d.full_name?.charAt(0)}</Text>
+                    )}
                   </View>
                   <View style={styles.nameContainer}>
                     <View style={styles.nameRow}>
@@ -323,6 +327,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#0EA5E9",
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
   },
   nameContainer: {
     flex: 1,

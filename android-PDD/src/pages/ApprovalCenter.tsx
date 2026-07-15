@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Image } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { UserCheck, UserX, Clock, ChevronLeft, ShieldCheck, Mail, Phone, Stethoscope, Calendar } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
@@ -153,7 +153,11 @@ const ApprovalCenter = () => {
                 <View key={doc.id} style={styles.doctorCard}>
                   <View style={styles.doctorInfo}>
                     <View style={styles.avatar}>
-                      <Text style={styles.avatarText}>{doc.full_name?.charAt(0) || "D"}</Text>
+                      {doc.avatar_url ? (
+                        <Image source={{ uri: doc.avatar_url }} style={styles.avatarImage} />
+                      ) : (
+                        <Text style={styles.avatarText}>{doc.full_name?.charAt(0) || "D"}</Text>
+                      )}
                     </View>
                     <View style={styles.details}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -338,6 +342,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#0EA5E9",
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
   },
   details: {
     flex: 1,

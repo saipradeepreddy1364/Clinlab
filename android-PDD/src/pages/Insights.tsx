@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   View, 
   Text, 
@@ -9,7 +9,8 @@ import {
   TextInput, 
   ActivityIndicator, 
   Alert, 
-  Platform 
+  Platform,
+  Image
 } from "react-native";
 import {
   BarChart3,
@@ -55,6 +56,9 @@ const Insights = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
+  const [editingAvatar, setEditingAvatar] = useState<{ uri: string; base64?: string } | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const webFileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -124,8 +128,56 @@ const Insights = () => {
     setEditingPhone(profile.phone || "");
     setEditingSpecialization(profile.specialization || "");
     setEditingOrg({ id: profile.org_id || "", name: profile.org_name || "" });
+    setEditingAvatar(null);
     setEditModalVisible(true);
     fetchOrganizations();
+  };
+
+  const pickAvatar = async () => {
+    if (Platform.OS === 'web') {
+      // Web: use hidden file input
+      if (!webFileInputRef.current) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async (e: any) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const base64 = (ev.target?.result as string).split(',')[1];
+            setEditingAvatar({ uri: ev.target?.result as string, base64 });
+          };
+          reader.readAsDataURL(file);
+        };
+        webFileInputRef.current = input;
+      }
+      webFileInputRef.current.click();
+      return;
+    }
+    // Mobile: use expo-image-picker
+    try {
+      const { launchImageLibraryAsync, requestMediaLibraryPermissionsAsync, MediaTypeOptions } = await import('expo-image-picker');
+      const { status } = await requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow access to your photo library in Settings.');
+        return;
+      }
+      const result = await launchImageLibraryAsync({
+        mediaTypes: MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+        base64: true,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setEditingAvatar({ uri: asset.uri, base64: asset.base64 || undefined });
+      }
+    } catch (err) {
+      console.error('Image picker error:', err);
+      Alert.alert('Error', 'Could not open image picker.');
+    }
   };
 
   const handleUpdateProfile = async () => {
@@ -158,6 +210,25 @@ const Insights = () => {
       } else if (profile.role === 'lab') {
         updateData.org_id = editingOrg.id || null;
         updateData.org_name = editingOrg.name || null;
+      }
+
+      // Upload new avatar if selected
+      if (editingAvatar?.base64) {
+        setUploadingAvatar(true);
+        try {
+          const bytes = Uint8Array.from(atob(editingAvatar.base64), c => c.charCodeAt(0));
+          const filePath = `${user.id}/avatar_${Date.now()}.jpg`;
+          const { error: uploadError } = await supabase.storage
+            .from('profile-pictures')
+            .upload(filePath, bytes, { contentType: 'image/jpeg', upsert: true });
+          if (uploadError) throw uploadError;
+          const { data: urlData } = supabase.storage
+            .from('profile-pictures')
+            .getPublicUrl(filePath);
+          updateData.avatar_url = urlData.publicUrl;
+        } finally {
+          setUploadingAvatar(false);
+        }
       }
 
       const { error } = await supabase
@@ -276,6 +347,26 @@ const Insights = () => {
                 )}
               </View>
 
+              {/* Avatar Picker */}
+              <TouchableOpacity onPress={pickAvatar} style={styles.avatarPickerContainer} activeOpacity={0.8}>
+                {(editingAvatar?.uri || profile?.avatar_url) ? (
+                  <Image
+                    source={{ uri: editingAvatar?.uri || profile?.avatar_url }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarPlaceholderText}>
+                      {profile?.full_name?.charAt(0)?.toUpperCase() || '?'}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.avatarCameraOverlay}>
+                  <Text style={styles.avatarCameraText}>📷</Text>
+                </View>
+              </TouchableOpacity>
+              <Text style={styles.avatarHint}>Tap to change profile photo</Text>
+
               <ScrollView 
                 nestedScrollEnabled={true}
                 keyboardShouldPersistTaps="handled"
@@ -362,11 +453,11 @@ const Insights = () => {
                   </TouchableOpacity>
                   
                   <TouchableOpacity 
-                    style={[styles.modalButton, styles.saveButton, saving && styles.buttonDisabled]}
+                    style={[styles.modalButton, styles.saveButton, (saving || uploadingAvatar) && styles.buttonDisabled]}
                     onPress={handleUpdateProfile}
-                    disabled={saving}
+                    disabled={saving || uploadingAvatar}
                   >
-                    {saving ? (
+                    {(saving || uploadingAvatar) ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
                       <Text style={styles.saveButtonText}>Save Changes</Text>
@@ -707,6 +798,58 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.7,
+  },
+  avatarPickerContainer: {
+    alignSelf: 'center',
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    marginBottom: 4,
+    position: 'relative',
+  },
+  avatarImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 3,
+    borderColor: '#0EA5E9',
+  },
+  avatarPlaceholder: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#0EA5E9',
+  },
+  avatarPlaceholderText: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#0EA5E9',
+  },
+  avatarCameraOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#0EA5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  avatarCameraText: {
+    fontSize: 14,
+  },
+  avatarHint: {
+    fontSize: 11,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginBottom: 12,
   },
 });
 

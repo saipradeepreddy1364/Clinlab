@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform, Modal, ActivityIndicator, Alert, SafeAreaView } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform, Modal, ActivityIndicator, Alert, SafeAreaView, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { Stethoscope, Loader2, ChevronDown, Search, Eye, EyeOff } from "lucide-react-native";
+import { Stethoscope, Loader2, ChevronDown, Search, Eye, EyeOff, Camera } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { notifyOrgOfPendingApproval } from "@/lib/notifications";
@@ -42,6 +42,8 @@ const Signup = () => {
     role: "dentist",
   });
   const [checkingEmail, setCheckingEmail] = useState(false);
+  const [profileImage, setProfileImage] = useState<{ uri: string; base64?: string } | null>(null);
+  const webImageInputRef = useRef<HTMLInputElement | null>(null);
 
   // Auto-fill logic for returning unverified users
   useEffect(() => {
@@ -487,6 +489,27 @@ const Signup = () => {
 
         if (profileError) throw profileError;
 
+        // Upload profile image if selected (Doctor/Lab only)
+        if (profileImage?.base64 && (authType === 'doctor' || authType === 'lab')) {
+          try {
+            const bytes = Uint8Array.from(atob(profileImage.base64), c => c.charCodeAt(0));
+            const filePath = `${data.session.user.id}/avatar_${Date.now()}.jpg`;
+            const { error: uploadError } = await supabase.storage
+              .from('profile-pictures')
+              .upload(filePath, bytes, { contentType: 'image/jpeg', upsert: true });
+            if (!uploadError) {
+              const { data: urlData } = supabase.storage
+                .from('profile-pictures')
+                .getPublicUrl(filePath);
+              await supabase.from('profiles')
+                .update({ avatar_url: urlData.publicUrl })
+                .eq('id', data.session.user.id);
+            }
+          } catch (imgErr) {
+            console.warn('Profile image upload failed (non-critical):', imgErr);
+          }
+        }
+
         if ((authType === 'doctor' || authType === 'lab') && formData.organization.id) {
           notifyOrgOfPendingApproval(formData.organization.id, formData.name, authType === 'lab');
         }
@@ -576,6 +599,27 @@ const Signup = () => {
             <Text style={[styles.tabText, (authType as string) === "organization" && styles.tabTextActive]}>Organization</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Profile Photo Picker — Doctor & Lab only */}
+        {(authType === 'doctor' || authType === 'lab') && (
+          <View style={styles.photoPicker}>
+            <Text style={styles.label}>Profile Photo <Text style={{ color: '#94A3B8', fontWeight: '400' }}>(Optional)</Text></Text>
+            <TouchableOpacity onPress={pickProfileImage} style={styles.photoPickerButton} activeOpacity={0.8}>
+              {profileImage?.uri ? (
+                <Image source={{ uri: profileImage.uri }} style={styles.photoPickerImage} />
+              ) : (
+                <View style={styles.photoPickerPlaceholder}>
+                  <Camera size={28} color="#0EA5E9" />
+                  <Text style={styles.photoPickerText}>Add Photo</Text>
+                </View>
+              )}
+              <View style={styles.photoPickerOverlay}>
+                <Text style={{ fontSize: 14 }}>📷</Text>
+              </View>
+            </TouchableOpacity>
+            <Text style={styles.photoPickerHint}>Helps your organization verify your identity</Text>
+          </View>
+        )}
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
@@ -1248,6 +1292,58 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#64748B",
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  photoPicker: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  photoPickerButton: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    position: 'relative',
+  },
+  photoPickerImage: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 3,
+    borderColor: '#0EA5E9',
+  },
+  photoPickerPlaceholder: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 2,
+    borderColor: '#0EA5E9',
+    borderStyle: 'dashed',
+    backgroundColor: '#F0F9FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  photoPickerText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#0EA5E9',
+  },
+  photoPickerOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#0EA5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  photoPickerHint: {
+    fontSize: 11,
+    color: '#94A3B8',
+    textAlign: 'center',
   },
 });
 
