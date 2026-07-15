@@ -1,0 +1,40 @@
+name: Load Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  run-load-tests:
+    name: Run Load Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r load_tests/requirements.txt
+
+    - name: Run Load Tests
+      run: |
+        cd load_tests
+        python load_test_runner.py
+
+    - name: Upload Load Test Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: load-test-report
+        path: load_tests/*.xlsx
