@@ -63,7 +63,6 @@ const Dashboard = () => {
       const user = session?.user;
 
       if (user) {
-        setUserName(user.user_metadata?.full_name || "Doctor");
         const metaRole = user.user_metadata?.role;
 
         const { data: profile } = await supabase
