@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { notifyOrgOfPendingApproval } from "@/lib/notifications";
 import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from 'expo-image-picker';
 
 const showAlert = (title: string, message: string, actions?: any[]) => {
   if (Platform.OS === 'web') {
@@ -585,7 +586,6 @@ const Signup = () => {
     }
     // Mobile: Try expo-image-picker first (allows native cropping)
     try {
-      const ImagePicker = await import('expo-image-picker');
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status === 'granted') {
         const result = await ImagePicker.launchImageLibraryAsync({

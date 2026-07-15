@@ -13,6 +13,7 @@ import {
   Image
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from 'expo-image-picker';
 import {
   BarChart3,
   Clock,
@@ -160,7 +161,6 @@ const Insights = () => {
     }
     // Mobile: Try expo-image-picker first (allows native cropping)
     try {
-      const ImagePicker = await import('expo-image-picker');
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status === 'granted') {
         const result = await ImagePicker.launchImageLibraryAsync({
