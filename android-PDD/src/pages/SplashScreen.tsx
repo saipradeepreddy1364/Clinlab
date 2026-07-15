@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { View, StyleSheet, Image, Platform } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { supabase } from "@/lib/supabase";
@@ -10,6 +10,7 @@ const logoSource = typeof APP_LOGO === 'string' ? { uri: APP_LOGO } : APP_LOGO;
 const SplashScreen = () => {
   const navigation = useNavigation<any>();
   const { data, setData, setIsPreloaded } = useAppData();
+  const [logoLoaded, setLogoLoaded] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -114,11 +115,12 @@ const SplashScreen = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.logoWrapper}>
+      <View style={[styles.logoWrapper, { opacity: logoLoaded ? 1 : 0 }]}>
         <Image 
           source={logoSource as any}
           style={styles.logo}
           resizeMode="contain"
+          onLoad={() => setLogoLoaded(true)}
         />
       </View>
     </View>
