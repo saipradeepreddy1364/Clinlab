@@ -582,6 +582,7 @@ const Signup = () => {
       input.oncancel = () => document.body.removeChild(input);
       input.click();
       return;
+    }
     // Mobile: Try expo-image-picker first (allows native cropping)
     try {
       const ImagePicker = await import('expo-image-picker');
