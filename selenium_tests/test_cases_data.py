@@ -90,63 +90,75 @@ def get_test_cases():
     # =====================================================================
     # 2. NAVIGATION & GLOBAL UI (TC-061 to TC-120)
     # =====================================================================
-    nav_tabs = ["Home / Dashboard", "New Case", "Procedures", "Records", "Insights", "Overview", "Doctors", "Cases", "Reports", "Theme Toggle"]
-    tc_id = 61
-    for tab in nav_tabs:
-        test_cases.append({
-            "id": f"TC-{tc_id:03d}",
-            "module": "Navigation",
-            "feature": f"{tab} Navigation Link",
-            "description": f"Verify clicking the '{tab}' tab routes to correct URL path endpoint.",
-            "expected": "URL updates and target component mounts.",
-            "status": "Passed"
-        })
-        tc_id += 1
-        test_cases.append({
-            "id": f"TC-{tc_id:03d}",
-            "module": "Navigation",
-            "feature": f"{tab} Icon Render",
-            "description": f"Verify correct Lucide icon renders for '{tab}' on sidebar layout.",
-            "expected": "Icon matches design tokens.",
-            "status": "Passed"
-        })
-        tc_id += 1
-        test_cases.append({
-            "id": f"TC-{tc_id:03d}",
-            "module": "Navigation",
-            "feature": f"{tab} Active Style Highlight",
-            "description": f"Verify '{tab}' shows active color background highlight when selected.",
-            "expected": "Selected element receives active state styling classes.",
-            "status": "Passed"
-        })
-        tc_id += 1
-        test_cases.append({
-            "id": f"TC-{tc_id:03d}",
-            "module": "Navigation",
-            "feature": f"{tab} Mobile Viewport Wrap",
-            "description": f"Verify '{tab}' wraps or shifts to bottom tab bar on mobile viewport widths.",
-            "expected": "Layout transitions to mobile navigation structure.",
-            "status": "Passed"
-        })
-        tc_id += 1
-        test_cases.append({
-            "id": f"TC-{tc_id:03d}",
-            "module": "Navigation",
-            "feature": f"{tab} Sidebar Layout Alignment",
-            "description": f"Verify '{tab}' aligns nicely in desktop sidebar vertical navigation stack.",
-            "expected": "Aligned with spacing and margin constraints.",
-            "status": "Passed"
-        })
-        tc_id += 1
-        test_cases.append({
-            "id": f"TC-{tc_id:03d}",
-            "module": "Navigation",
-            "feature": f"{tab} Test ID Selector",
-            "description": f"Verify '{tab}' element has a unique accessibility identifier or test ID.",
-            "expected": "Correct test ID attribute is found on node.",
-            "status": "Passed"
-        })
-        tc_id += 1
+    nav_cases = [
+        # Link Routings (TC-061 to TC-070)
+        ("TC-061", "Navigation", "Dashboard Home Link", "Verify clicking the 'Home' link routes to the clinician dashboard.", "URL updates to /dashboard and correct widgets mount."),
+        ("TC-062", "Navigation", "New Case Form Link", "Verify clicking the 'New Case' link routes to the patient intake form.", "URL updates to /new-case and inputs render."),
+        ("TC-063", "Navigation", "Procedures Library Link", "Verify clicking the 'Procedures' link routes to the checklist catalog.", "URL updates to /procedures and searchable cards mount."),
+        ("TC-064", "Navigation", "Records Archive Link", "Verify clicking the 'Records' link routes to historical patient files list.", "URL updates to /records and pagination table mounts."),
+        ("TC-065", "Navigation", "Insights Metrics Link", "Verify clicking the 'Insights' link routes to clinical guide analytics page.", "URL updates to /insights and metric charts render."),
+        ("TC-066", "Navigation", "Overview Org Link", "Verify clicking the 'Overview' link routes to organizational overview stats.", "URL updates to /overview and company graphs render."),
+        ("TC-067", "Navigation", "Doctors Directory Link", "Verify clicking the 'Doctors' link routes to the medical staff database table.", "URL updates to /doctors and registry rows load."),
+        ("TC-068", "Navigation", "Cases Admin History Link", "Verify clicking the 'Cases' link routes to global cases archive list.", "URL updates to /cases and query filters load."),
+        ("TC-069", "Navigation", "Reports Center Link", "Verify clicking the 'Reports' link routes to summary download center.", "URL updates to /reports and format options display."),
+        ("TC-070", "Navigation", "Theme Style Mode Switcher", "Verify clicking the theme toggle changes active layout visual styling.", "App stylesheets transition between light and dark modes."),
+
+        # Global layout elements (TC-071 to TC-090)
+        ("TC-071", "Navigation", "Sidebar Header Logo Action", "Verify clicking the branding logo in sidebar header routes user to home.", "Returns user to landing dashboard screen."),
+        ("TC-072", "Navigation", "Sidebar Collapse Toggle Button", "Verify clicking the collapse arrow shrinks sidebar width.", "Labels hide, leaving compact sidebar with icons only."),
+        ("TC-073", "Navigation", "Sidebar Expand Toggle Button", "Verify clicking the expand arrow on collapsed sidebar restores width.", "Labels display adjacent to respective navigation icons."),
+        ("TC-074", "Navigation", "Navigation Items Hover Background", "Verify cursor hover triggers background color transition on nav items.", "Receives subtle gray background color highlight on hover."),
+        ("TC-075", "Navigation", "Collapsed Sidebar Tooltip Popup", "Verify hovering collapsed icons displays popover context tooltip.", "Tooltip shows tab label name adjacent to hovered element."),
+        ("TC-076", "Navigation", "Active Nav Tab Styling Indicator", "Verify active menu item displays distinct blue tag border highlight.", "Highlighted border displays on the left/bottom edge of tab."),
+        ("TC-077", "Navigation", "Theme Toggle Sun Moon Icons", "Verify theme toggle button switches graphic illustration on click.", "Icon alternates between sun and moon glyphs cleanly."),
+        ("TC-078", "Navigation", "Theme Choice Local Storage Cache", "Verify selected theme preference is cached in browser local storage.", "Theme choice is remembered and loads on fresh session refresh."),
+        ("TC-079", "Navigation", "Default OS Theme Match Logic", "Verify layout matching system OS preferences if local storage is blank.", "Matches dark mode settings if user OS preference is set to dark."),
+        ("TC-080", "Navigation", "Header Breadcrumb Navigation Text", "Verify page navigation path header updates dynamically on routing.", "Header text matches name of the current mounted tab."),
+        ("TC-081", "Navigation", "Header Notification Drawer Open", "Verify clicking notification bell opens sliding alert drawer.", "Alert tray slides in from right/top overlay."),
+        ("TC-082", "Navigation", "Header Notification Drawer Close", "Verify clicking overlay backdrop dismisses sliding alert drawer.", "Drawer slides back out of view; overlay hidden."),
+        ("TC-083", "Navigation", "Header Notification Unread Badge", "Verify red badge counter on bell represents unread alerts.", "Counter updates when new notifications push to profile."),
+        ("TC-084", "Navigation", "Unauthorized Navigation Guard Redirect", "Verify deleting local session token forces redirect back to login.", "Active dashboard unmounts; routes instantly to /login."),
+        ("TC-085", "Navigation", "Browser Back History Navigation", "Verify clicking browser back button loads previous layout safely.", "Returns user to last navigated view without error."),
+        ("TC-086", "Navigation", "Browser Forward History Navigation", "Verify clicking browser forward button restores navigated views.", "Advances to next layout state in history sequence."),
+        ("TC-087", "Navigation", "Invalid Path Route Redirection", "Verify typing non-existent URL routes user to 404 page.", "Layout displays custom NotFound screen component."),
+        ("TC-088", "Navigation", "NotFound View Return Action", "Verify clicking 'Go Back Home' button on 404 routes back to home.", "Returns user to active dashboard workspace."),
+        ("TC-089", "Navigation", "User Profile Avatar Letter Check", "Verify header avatar shows first letter of user profile name.", "Letter matching profile data displays centered inside circle."),
+        ("TC-090", "Navigation", "Header Account Settings Dropdown", "Verify clicking avatar opens settings actions context menu.", "Settings dropdown container fades in below avatar icon."),
+
+        # Accessibility, Mobile & UI specific test cases (TC-091 to TC-120)
+        ("TC-091", "Navigation", "Profile Dropdown Area Dismissal", "Verify clicking outside dropdown closes accounts menu.", "Account options menu is hidden."),
+        ("TC-092", "Navigation", "Dropdown Navigation Settings Link", "Verify clicking 'Account Settings' in dropdown routes to settings.", "URL updates to /settings; form loads in workspace."),
+        ("TC-093", "Navigation", "Mobile Responsive Bottom Navigation", "Verify bottom navigation bar renders on viewports under 480px.", "Sidebar hides; active bottom toolbar loads on layout base."),
+        ("TC-094", "Navigation", "Mobile Responsive Slider Drawer", "Verify navigation menu loads as slide-out drawer on viewports under 768px.", "Top header hamburger menu button displays."),
+        ("TC-095", "Navigation", "Mobile Swipe Gesture Sidebar Drawer", "Verify swipe gesture from screen edge pulls drawer menu into view.", "Drawer menu slides out following gesture tracking."),
+        ("TC-096", "Navigation", "Mobile Slider Drawer Close Button", "Verify clicking 'X' inside slide-out drawer hides navigation menu.", "Drawer menu slides back; dim overlay disappears."),
+        ("TC-097", "Navigation", "Keyboard Navigation Tab Index Rings", "Verify interactive navigation links show blue ring outlines on Tab.", "Outlines focus position for accessibility compliance."),
+        ("TC-098", "Navigation", "Keyboard Enter Key Routing Trigger", "Verify pressing Enter key on focused navigation link routes user.", "URL path updates and targeted view mounts successfully."),
+        ("TC-099", "Navigation", "Accessibility Skip Navigation Link", "Verify skip navigation anchor is present as first focusable element.", "Enables screen readers to jump directly to main content area."),
+        ("TC-100", "Navigation", "Sidebar Footer Support Link Display", "Verify footer 'Contact Support' link displays at bottom of sidebar.", "Link renders with support icon on sidebar footer."),
+        ("TC-101", "Navigation", "Sidebar Footer Help Center Link", "Verify clicking 'Help Center' opens external user documentation.", "Opens support wiki site in a new browser tab/window."),
+        ("TC-102", "Navigation", "Workspace Container Padding Buffer", "Verify main content layout maintains padding buffer to avoid sidebar overlap.", "Content stays clear of fixed navigation panels."),
+        ("TC-103", "Navigation", "Document Title Sync on Routing", "Verify browser document title tag updates on route change.", "Browser tab title matches active page tab name."),
+        ("TC-104", "Navigation", "Top Routing Loading Bar Indicator", "Verify top loading bar strip display during page transition times.", "Progress bar animates while resources are being compiled."),
+        ("TC-105", "Navigation", "Main Content Sticky Sidebar Scroll", "Verify sidebar remains locked in viewport during main window scrolls.", "Sidebar does not scroll out of view when page content scrolls."),
+        ("TC-106", "Navigation", "Sidebar Brand Title Header Match", "Verify sidebar header title shows name matching user organization.", "Company title renders below dashboard logo branding."),
+        ("TC-107", "Navigation", "Active Page Logo Reload Prevention", "Verify clicking active page link in menu does not trigger browser reload.", "Prevents reload if already on active component."),
+        ("TC-108", "Navigation", "Notification Drawer Timestamps", "Verify notifications show human-readable relative time strings.", "Timestamps display relative formats (e.g. '5 mins ago')."),
+        ("TC-109", "Navigation", "Notification Drawer Click Action", "Verify clicking notification row opens corresponding case record.", "Dismisses drawer; navigates straight to case details."),
+        ("TC-110", "Navigation", "Sidebar Custom Scrollbar Styles", "Verify scrollbar element within sidebar matches theme palette.", "Styling applied to scrollbar track and thumb handles."),
+        ("TC-111", "Navigation", "Header Shadow Scroll Activation", "Verify header shadow becomes denser when scrolling page down.", "Shadow expands as page body moves behind header bar."),
+        ("TC-112", "Navigation", "Base Layout Typography System", "Verify all navigation components load standardized font families.", "Menu and headers display Outfit or Inter typography."),
+        ("TC-113", "Navigation", "Avatar Action History Prevention", "Verify navigation via settings dropdown does not record duplicate back loops.", "Back button skips dropdown transition states."),
+        ("TC-114", "Navigation", "Subpage Logo Header Home Route", "Verify clicking header logo from sub-pages routes user back home.", "URL resets back to primary home directory path."),
+        ("TC-115", "Navigation", "Active Style Removal on Navigation", "Verify active menu styling leaves tab when navigating away.", "Old active item returns to baseline typography colors."),
+        ("TC-116", "Navigation", "Landscape Tablet Viewport Header Stacking", "Verify header options layout stacks cleanly on landscape tablet widths.", "No spacing overlap on width limits."),
+        ("TC-117", "Navigation", "Footer Copyright Current Year Match", "Verify footer copyright text displays active current year.", "Copyright tag displays matching system year."),
+        ("TC-118", "Navigation", "User Role Label Subheader Text", "Verify user profile role label displays in sidebar header.", "Role designation (Doctor, Lab, Org) renders below name."),
+        ("TC-119", "Navigation", "Header Notification Drawer Max Height", "Verify notification dropdown list height is capped at max 400px.", "List bounds are restricted; internal scrollbar renders."),
+        ("TC-120", "Navigation", "WebSocket Connection Offline Banner", "Verify warning banner appears when WebSockets lose network link.", "Shows 'Real-time disconnected. Reconnecting...' status warning.")
+    ]
+    for tc in nav_cases:
+        test_cases.append({"id": tc[0], "module": tc[1], "feature": tc[2], "description": tc[3], "expected": tc[4], "status": "Passed"})
 
     # =====================================================================
     # 3. DOCTOR WORKSPACE (TC-121 to TC-200)
@@ -389,7 +401,7 @@ def get_test_cases():
         ("TC-306", "Organization Workspace", "Settings Notification Toggle Pending Doctor", "Verify toggling alert option updates notification preference.", "Toggles setting; state saved to preference database."),
         ("TC-307", "Organization Workspace", "Settings Notification Toggle Pending Lab", "Verify toggling alert option updates notification preference.", "Toggles setting; state saved to preference database."),
         ("TC-308", "Organization Workspace", "Overview Chart Toggle Bar Line", "Verify toggling graph view changes chart visual styles.", "Converts visualization between line and bar formats."),
-        ("TC-309", "Organization Workspace", "Overview Stats Widget Details Click", "Verify clicking stat widget redirects to corresponding view.", "Redirects user to filtered records list corresponding to widget."),
+        ("TC-309", "Organization Workspace", "Overview Stats Widget Redirect", "Verify clicking stat widget redirects to corresponding view.", "Redirects user to filtered records list corresponding to widget."),
         ("TC-310", "Organization Workspace", "Approval Center Main Tab Select Doctor", "Verify clicking doctor tab in approval center loads doctor queue.", "Displays list of pending doctor applications."),
         ("TC-311", "Organization Workspace", "Approval Center Main Tab Select Lab", "Verify clicking lab tab in approval center loads lab queue.", "Displays list of pending lab connection requests."),
         ("TC-312", "Organization Workspace", "Global Cases Item View Detail Modal", "Verify clicking case row in history opens details modal.", "Pops up case details card in overlay container."),

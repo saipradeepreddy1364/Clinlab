@@ -33,9 +33,7 @@ def generate_excel_report(run_results=None):
         "Module", 
         "Feature", 
         "Description", 
-        "Status", 
-        "Execution Time (ms)", 
-        "Timestamp"
+        "Status"
     ]
     
     # Write Header row
@@ -57,11 +55,6 @@ def generate_excel_report(run_results=None):
     # Track duplicates to ensure 100% uniqueness
     seen_keys = set()
     passed_cases = []
-    
-    # Get ISO timestamp format
-    current_time_str = datetime.now().isoformat()
-    if "+" not in current_time_str:
-        current_time_str += "+05:30" # standard offset matching metadata local time
 
     for tc in all_cases:
         tc_id = tc.get("id")
@@ -98,28 +91,14 @@ def generate_excel_report(run_results=None):
         # Status styling: Bold green text for "PASS"
         status_cell = ws.cell(row=row_idx, column=6, value=status)
         status_cell.font = Font(name="Segoe UI", size=11, bold=True, color="16A34A")
-        
-        # Execution time in ms: generate realistic duration
-        # Navigate or login or heavy forms take 300-1500ms; simple field validation checks take 10-150ms
-        duration = random.randint(150, 1500) if any(x in tc_name.lower() or x in feature.lower() for x in ["login", "submit", "navigate", "load", "approval", "chart"]) else random.randint(10, 120)
-        ws.cell(row=row_idx, column=7, value=duration).alignment = Alignment(horizontal="right")
-        
-        ws.cell(row=row_idx, column=8, value=current_time_str)
 
         # Style all cells in this row
-        for col_idx in range(1, 9):
+        for col_idx in range(1, 7):
             c = ws.cell(row=row_idx, column=col_idx)
             if col_idx != 6: # Status has custom font styling
                 c.font = regular_font
             c.border = border_all
-            
-            # Alignments
-            if col_idx in [1, 2, 3, 4, 5]:
-                c.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
-            elif col_idx in [6, 8]:
-                c.alignment = Alignment(horizontal="left", vertical="center")
-            elif col_idx == 7:
-                c.alignment = Alignment(horizontal="right", vertical="center")
+            c.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
                 
         ws.row_dimensions[row_idx].height = 24
 
@@ -130,9 +109,7 @@ def generate_excel_report(run_results=None):
         "C": 25,  # Module
         "D": 38,  # Feature
         "E": 80,  # Description
-        "F": 12,  # Status
-        "G": 22,  # Execution Time (ms)
-        "H": 28   # Timestamp
+        "F": 12   # Status
     }
     for col_letter, width in column_widths.items():
         ws.column_dimensions[col_letter].width = width
