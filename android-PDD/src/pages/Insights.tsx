@@ -12,6 +12,7 @@ import {
   Platform,
   Image
 } from "react-native";
+import * as DocumentPicker from "expo-document-picker";
 import {
   BarChart3,
   Clock,
@@ -159,8 +160,7 @@ const Insights = () => {
     }
     // Mobile: use expo-document-picker (already in native build — OTA safe)
     try {
-      const { getDocumentAsync } = await import('expo-document-picker');
-      const result = await getDocumentAsync({
+      const result = await DocumentPicker.getDocumentAsync({
         type: 'image/*',
         copyToCacheDirectory: true,
       });

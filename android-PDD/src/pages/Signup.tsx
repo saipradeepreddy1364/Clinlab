@@ -5,6 +5,7 @@ import { Stethoscope, Loader2, ChevronDown, Search, Eye, EyeOff, Camera } from "
 import { supabase } from "@/lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { notifyOrgOfPendingApproval } from "@/lib/notifications";
+import * as DocumentPicker from "expo-document-picker";
 
 const showAlert = (title: string, message: string, actions?: any[]) => {
   if (Platform.OS === 'web') {
@@ -584,8 +585,7 @@ const Signup = () => {
     }
     // Mobile: use expo-document-picker (already in native build — OTA safe)
     try {
-      const { getDocumentAsync } = await import('expo-document-picker');
-      const result = await getDocumentAsync({
+      const result = await DocumentPicker.getDocumentAsync({
         type: 'image/*',
         copyToCacheDirectory: true,
       });

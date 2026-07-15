@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Dimensions, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Dimensions, ActivityIndicator, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useAppData } from "@/lib/AppDataContext";
 import {
@@ -23,6 +23,7 @@ const Dashboard = ({ route }: any) => {
   const { data: preloadedData, isPreloaded } = useAppData();
   const [userName, setUserName] = useState("Doctor");
   const [orgName, setOrgName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [greeting, setGreeting] = useState("Good morning");
   const [stats, setStats] = useState(preloadedData.stats);
   const [recentCases, setRecentCases] = useState<any[]>(preloadedData.recentCases);
@@ -41,6 +42,7 @@ const Dashboard = ({ route }: any) => {
       setRole(userRole);
       setUserName(preloadedData.profile.full_name || "Doctor");
       setOrgName(preloadedData.profile.org_name || "");
+      setAvatarUrl(preloadedData.profile.avatar_url || null);
       setStats(preloadedData.stats);
       setRecentCases(preloadedData.recentCases.slice(0, 3).map(c => ({
         id: c.id,
@@ -67,7 +69,7 @@ const Dashboard = ({ route }: any) => {
 
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role, id, full_name, org_name')
+          .select('role, id, full_name, org_name, avatar_url')
           .eq('id', user.id)
           .single();
 
@@ -75,6 +77,7 @@ const Dashboard = ({ route }: any) => {
         setRole(userRole);
         setUserName(profile?.full_name || user.user_metadata?.full_name || "Doctor");
         setOrgName(profile?.org_name || user.user_metadata?.org_name || "");
+        setAvatarUrl(profile?.avatar_url || null);
 
         if (profile && (!profile.full_name || profile.full_name === "Doctor" || profile.full_name === "New User" || !profile.org_name)) {
           const metadata = user.user_metadata;
@@ -146,17 +149,32 @@ const Dashboard = ({ route }: any) => {
       <View style={styles.container}>
         {/* Hero greeting */}
         <View style={styles.heroCard}>
-          <View style={styles.heroContent}>
-            <View style={styles.todayBadge}>
-              <Activity size={10} color="#FFFFFF" />
-              <Text style={styles.todayText}>Today</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <View style={[styles.heroContent, { flex: 1 }]}>
+              <View style={styles.todayBadge}>
+                <Activity size={10} color="#FFFFFF" />
+                <Text style={styles.todayText}>Today</Text>
+              </View>
+              <Text style={styles.greetingText}>
+                {greeting}, Dr. {userName}
+              </Text>
+              <Text style={styles.statsSummary}>
+                {stats.active} new cases · {stats.lab} lab requests pending
+              </Text>
             </View>
-            <Text style={styles.greetingText}>
-              {greeting}, Dr. {userName}
-            </Text>
-            <Text style={styles.statsSummary}>
-              {stats.active} new cases · {stats.lab} lab requests pending
-            </Text>
+            
+            {/* Circular Doctor Avatar on Dashboard */}
+            <View style={styles.dashboardAvatarContainer}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.dashboardAvatar} />
+              ) : (
+                <View style={styles.dashboardAvatarPlaceholder}>
+                  <Text style={styles.dashboardAvatarPlaceholderText}>
+                    {userName.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
@@ -449,6 +467,31 @@ const styles = StyleSheet.create({
   alertText: {
     fontSize: 12,
     color: "#B45309",
+  },
+  dashboardAvatarContainer: {
+    marginLeft: 16,
+  },
+  dashboardAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.6)',
+  },
+  dashboardAvatarPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.6)',
+  },
+  dashboardAvatarPlaceholderText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
   },
 });
 
