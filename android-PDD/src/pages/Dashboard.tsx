@@ -18,7 +18,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabase";
 import AppLayout from "@/components/AppLayout";
 
-const Dashboard = () => {
+const Dashboard = ({ route }: any) => {
   const navigation = useNavigation<any>();
   const { data: preloadedData, isPreloaded } = useAppData();
   const [userName, setUserName] = useState("Doctor");
@@ -26,7 +26,7 @@ const Dashboard = () => {
   const [greeting, setGreeting] = useState("Good morning");
   const [stats, setStats] = useState(preloadedData.stats);
   const [recentCases, setRecentCases] = useState<any[]>(preloadedData.recentCases);
-  const [loading, setLoading] = useState(!isPreloaded);
+  const [loading, setLoading] = useState(route?.params?.preloaded ? false : !isPreloaded);
   const [role, setRole] = useState<"doctor" | "organization" | "loading">(preloadedData.profile?.role || "loading");
   const [pendingCount, setPendingCount] = useState(preloadedData.pendingCount);
 

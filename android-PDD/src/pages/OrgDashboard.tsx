@@ -29,10 +29,10 @@ const showAlert = (title: string, message: string, actions?: any[]) => {
   }
 };
 
-const OrgDashboard = () => {
+const OrgDashboard = ({ route }: any) => {
   const navigation = useNavigation<any>();
   const { data: preloadedData, isPreloaded } = useAppData();
-  const [loading, setLoading] = useState(!isPreloaded);
+  const [loading, setLoading] = useState(route?.params?.preloaded ? false : !isPreloaded);
   const [stats, setStats] = useState(preloadedData.stats);
   const [doctors, setDoctors] = useState<any[]>(preloadedData.doctors);
   const [recentCases, setRecentCases] = useState<any[]>(preloadedData.recentCases);
