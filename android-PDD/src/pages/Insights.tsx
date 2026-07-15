@@ -158,7 +158,29 @@ const Insights = () => {
       input.click();
       return;
     }
-    // Mobile: use expo-document-picker (already in native build — OTA safe)
+    // Mobile: Try expo-image-picker first (allows native cropping)
+    try {
+      const ImagePicker = await import('expo-image-picker');
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status === 'granted') {
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.7,
+          base64: true,
+        });
+        if (!result.canceled && result.assets?.[0]) {
+          const asset = result.assets[0];
+          setEditingAvatar({ uri: asset.uri, base64: asset.base64 || undefined });
+          return;
+        }
+      }
+    } catch (err) {
+      console.log('expo-image-picker failed, falling back to document picker:', err);
+    }
+
+    // Mobile Fallback: expo-document-picker
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: 'image/*',
@@ -166,7 +188,6 @@ const Insights = () => {
       });
       if (!result.canceled && result.assets?.[0]) {
         const uri = result.assets[0].uri;
-        // Convert URI to base64 via blob (works in Expo)
         const response = await fetch(uri);
         const blob = await response.blob();
         const reader = new FileReader();
@@ -178,7 +199,7 @@ const Insights = () => {
         reader.readAsDataURL(blob);
       }
     } catch (err) {
-      console.error('Image picker error:', err);
+      console.error('Mobile fallback image picker error:', err);
       Alert.alert('Error', 'Could not open image picker. Please try again.');
     }
   };
