@@ -11,7 +11,7 @@
     ],
     "runtimeVersion": "1.0.0",
     "updates": {
-      "url": "https://u.expo.dev/a8e8fa5b-47b5-4f19-9e38-09a77ae852f3"
+      "url": "https://u.expo.dev/40eba1e0-ba19-4db7-b4e4-b5985dfdd683"
     },
     "ios": {
       "supportsTablet": true,
@@ -25,7 +25,10 @@
       "adaptiveIcon": {
         "foregroundImage": "./public/favicon.png",
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./public/favicon.png",
@@ -51,8 +54,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "a8e8fa5b-47b5-4f19-9e38-09a77ae852f3"
+        "projectId": "40eba1e0-ba19-4db7-b4e4-b5985dfdd683"
       }
-    }
+    },
+    "owner": "venkatasaipradeepreddyp"
   }
 }
