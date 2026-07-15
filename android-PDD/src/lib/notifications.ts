@@ -16,26 +16,24 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// ── Step 2: Create Android notification channel at module load ────────────────
-// Channels must exist before any notification is scheduled.
-// Creating it here (top-level) ensures it is ready on first use.
-if (Platform.OS === 'android') {
-  Notifications.setNotificationChannelAsync('clinlab-alerts', {
-    name: 'ClinLab Alerts',
-    description: 'Real-time clinical and approval alerts',
-    importance: Notifications.AndroidImportance.MAX,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#0EA5E9',
-    enableLights: true,
-    enableVibrate: true,
-    showBadge: true,
-    sound: 'default',
-  });
-}
-
 // ── Step 3: Permission registration ──────────────────────────────────────────
 export async function registerForPushNotificationsAsync() {
   if (Platform.OS === 'web') return null;
+
+  // Create Android notification channel safely during permission registration
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('clinlab-alerts', {
+      name: 'ClinLab Alerts',
+      description: 'Real-time clinical and approval alerts',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#0EA5E9',
+      enableLights: true,
+      enableVibrate: true,
+      showBadge: true,
+      sound: 'default',
+    });
+  }
 
   // Request permissions (works on both emulator and physical device)
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
