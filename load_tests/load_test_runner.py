@@ -7,7 +7,7 @@ from generate_load_report import generate_load_report
 
 # Configuration
 TARGET_URL = "https://clinlab.vercel.app"
-API_URL = "https://pdd-backend-ztqc.onrender.com/api/health"
+API_URL = "https://pdd-backend-ztqc.onrender.com/api/procedures"
 DURATION = 60       # seconds
 VIRTUAL_USERS = 100 # concurrent threads
 
@@ -36,7 +36,7 @@ def make_request(user_id, request_num):
         request_logs.append({
             "user_id": user_id,
             "request_num": request_num,
-            "endpoint": "GET /" if url == TARGET_URL else "GET /api/health",
+            "endpoint": "GET /" if url == TARGET_URL else "GET /api/procedures",
             "status": status_code,
             "duration": duration_ms,
             "timestamp": timestamp

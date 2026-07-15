@@ -156,11 +156,15 @@ def generate_load_report(metrics, logs):
 
     # Save logic with locks handling
     try:
-        wb.save("load_test_report.xlsx")
-        print("[SUCCESS] Report generated: load_test_report.xlsx")
+        wb.save("load_test.xlsx")
+        print("[SUCCESS] Report generated: load_test.xlsx")
     except PermissionError:
-        wb.save("clinlab_load_test_report.xlsx")
-        print("[WARNING] 'load_test_report.xlsx' is open. Saved as 'clinlab_load_test_report.xlsx' instead.")
+        try:
+            wb.save("load_test_report.xlsx")
+            print("[WARNING] 'load_test.xlsx' is open. Saved as 'load_test_report.xlsx' instead.")
+        except PermissionError:
+            wb.save("clinlab_load_test.xlsx")
+            print("[WARNING] Files are locked. Saved as 'clinlab_load_test.xlsx' instead.")
 
 if __name__ == "__main__":
     # Test stub
