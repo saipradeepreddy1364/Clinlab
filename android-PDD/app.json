@@ -12,7 +12,7 @@
     "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/9f929eea-8036-43bb-a66c-f33488f8c36d",
-      "checkAutomatically": "ON_LOAD"
+      "checkAutomatically": "NEVER"
     },
     "ios": {
       "supportsTablet": true,

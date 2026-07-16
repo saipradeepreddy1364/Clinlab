@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Platform } from "react-native";
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Platform, AppState, AppStateStatus } from "react-native";
 import * as Updates from "expo-updates";
 import { ArrowDownToLine, RefreshCw } from "lucide-react-native";
 
@@ -8,27 +8,43 @@ export const InAppUpdateModal = () => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
 
+  const checkUpdates = async () => {
+    if (Platform.OS === "web" || !Updates || !Updates.isEnabled) return;
+    try {
+      console.log("Checking for EAS update...");
+      const update = await Updates.checkForUpdateAsync();
+      if (update.isAvailable) {
+        console.log("EAS update is available, displaying modal");
+        setUpdateAvailable(true);
+      } else {
+        console.log("No EAS update available");
+      }
+    } catch (error) {
+      console.warn("Check for updates failed:", error);
+    }
+  };
+
   useEffect(() => {
-    // Only check if updates are enabled in this build (e.g. in built APK/IPAs, not in local Metro dev or Web)
     if (Platform.OS === "web" || !Updates || !Updates.isEnabled) return;
 
-    const checkUpdates = async () => {
-      try {
-        const update = await Updates.checkForUpdateAsync();
-        if (update.isAvailable) {
-          setUpdateAvailable(true);
-        }
-      } catch (error) {
-        console.warn("Check for updates failed:", error);
-      }
-    };
-
-    // Delay checking by 3 seconds so the app splash and main screen load first
+    // Check 3 seconds after mount
     const timer = setTimeout(() => {
       checkUpdates();
     }, 3000);
 
-    return () => clearTimeout(timer);
+    // Check when app resumes from background
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState === "active") {
+        checkUpdates();
+      }
+    };
+
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
+
+    return () => {
+      clearTimeout(timer);
+      subscription.remove();
+    };
   }, []);
 
   const handleUpdate = async () => {
