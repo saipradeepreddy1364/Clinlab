@@ -293,6 +293,11 @@ const Signup = () => {
       return;
     }
 
+    if (!trimmedEmail.endsWith("@gmail.com")) {
+      showAlert("Invalid Email Domain", "Email must be a valid Google email address ending with @gmail.com");
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       showAlert("Passwords Mismatch", "The passwords you entered do not match.");
       return;
@@ -305,6 +310,11 @@ const Signup = () => {
 
     if (authType === "lab" && !formData.organization.id) {
       showAlert("Organization Required", "Please select your organization.");
+      return;
+    }
+
+    if ((authType === "doctor" || authType === "lab") && !profileImage) {
+      showAlert("Profile Photo Required", "Please upload a profile photo.");
       return;
     }
 
@@ -653,7 +663,7 @@ const Signup = () => {
         {/* Profile Photo Picker — Doctor & Lab only */}
         {(authType === 'doctor' || authType === 'lab') && (
           <View style={styles.photoPicker}>
-            <Text style={styles.label}>Profile Photo <Text style={{ color: '#94A3B8', fontWeight: '400' }}>(Optional)</Text></Text>
+            <Text style={styles.label}>Profile Photo <Text style={{ color: '#EF4444', fontWeight: '500' }}>(Required)</Text></Text>
             <TouchableOpacity onPress={pickProfileImage} style={styles.photoPickerButton} activeOpacity={0.8}>
               {profileImage?.uri ? (
                 <Image source={{ uri: profileImage.uri }} style={styles.photoPickerImage} />

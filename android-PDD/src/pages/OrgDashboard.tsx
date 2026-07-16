@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Platform, Alert, Image } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Platform, Alert, Image, Modal, TextInput } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useAppData } from "@/lib/AppDataContext";
 import {
@@ -12,7 +12,9 @@ import {
   AlertCircle,
   FileText,
   UserCheck,
+  Camera,
 } from "lucide-react-native";
+import * as ImagePicker from 'expo-image-picker';
 import { supabase } from "@/lib/supabase";
 import AppLayout from "@/components/AppLayout";
 
@@ -38,6 +40,130 @@ const OrgDashboard = ({ route }: any) => {
   const [recentCases, setRecentCases] = useState<any[]>(preloadedData.recentCases);
   const [profile, setProfile] = useState<any>(preloadedData.profile);
   const [pendingCount, setPendingCount] = useState(preloadedData.pendingCount);
+
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingName, setEditingName] = useState("");
+  const [editingPhone, setEditingPhone] = useState("");
+  const [editingAvatar, setEditingAvatar] = useState<{ uri: string; base64?: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const handleOpenEditProfile = () => {
+    if (!profile) return;
+    setEditingName(profile.full_name || profile.org_name || "");
+    setEditingPhone(profile.phone || "");
+    setEditingAvatar(null);
+    setEditModalVisible(true);
+  };
+
+  const pickAvatar = async () => {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.style.display = 'none';
+      document.body.appendChild(input);
+      input.onchange = async (e: any) => {
+        const file = e.target.files[0];
+        document.body.removeChild(input);
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const dataUrl = ev.target?.result as string;
+          const base64 = dataUrl.split(',')[1];
+          setEditingAvatar({ uri: dataUrl, base64 });
+        };
+        reader.readAsDataURL(file);
+      };
+      input.oncancel = () => document.body.removeChild(input);
+      input.click();
+      return;
+    }
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status === 'granted') {
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.7,
+          base64: true,
+        });
+        if (!result.canceled && result.assets?.[0]) {
+          const asset = result.assets[0];
+          setEditingAvatar({ uri: asset.uri, base64: asset.base64 || undefined });
+        }
+      } else {
+        showAlert('Permission Required', 'Please allow access to your photo library in Settings.');
+      }
+    } catch (err: any) {
+      console.error('Image picker error:', err);
+      showAlert('Error', `Could not open image picker: ${err.message || err.toString()}`);
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!editingName.trim()) {
+      showAlert("Validation Error", "Organization name cannot be empty.");
+      return;
+    }
+    if (!editingPhone.trim()) {
+      showAlert("Validation Error", "Phone number cannot be empty.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        showAlert("Error", "No active user session found.");
+        return;
+      }
+
+      const updateData: any = {
+        full_name: editingName.trim(),
+        org_name: editingName.trim(),
+        phone: editingPhone.trim(),
+      };
+
+      if (editingAvatar?.base64) {
+        setUploadingAvatar(true);
+        try {
+          const bytes = Uint8Array.from(atob(editingAvatar.base64), c => c.charCodeAt(0));
+          const filePath = `${user.id}/avatar_${Date.now()}.jpg`;
+          const { error: uploadError } = await supabase.storage
+            .from('profile-pictures')
+            .upload(filePath, bytes, { contentType: 'image/jpeg', upsert: true });
+          if (uploadError) throw uploadError;
+          const { data: urlData } = supabase.storage
+            .from('profile-pictures')
+            .getPublicUrl(filePath);
+          updateData.avatar_url = urlData.publicUrl;
+        } catch (upErr: any) {
+          console.error("Upload error details:", upErr);
+          throw upErr;
+        } finally {
+          setUploadingAvatar(false);
+        }
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setProfile({ ...profile, ...updateData });
+      showAlert("Success", "Profile updated successfully.");
+      setEditModalVisible(false);
+    } catch (err: any) {
+      console.error("Error updating profile:", err);
+      showAlert("Update Failed", err.message || "An error occurred.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -183,13 +309,25 @@ const OrgDashboard = ({ route }: any) => {
             >
               {profile?.full_name || profile?.org_name || "Organization"}
             </Text>
-            <View style={styles.verifiedBadge}>
-              <UserCheck size={12} color="#10B981" />
-              <Text style={styles.verifiedText}>Verified Clinical Hub</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+              <View style={styles.verifiedBadge}>
+                <UserCheck size={12} color="#10B981" />
+                <Text style={styles.verifiedText}>Verified Clinical Hub</Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.editProfileBadgeBtn}
+                onPress={handleOpenEditProfile}
+              >
+                <Text style={styles.editProfileBadgeText}>Edit Profile</Text>
+              </TouchableOpacity>
             </View>
           </View>
           <View style={styles.welcomeIconBox}>
-            <Stethoscope size={32} color="#FFFFFF" />
+            {profile?.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.welcomeAvatarImage} />
+            ) : (
+              <Stethoscope size={32} color="#FFFFFF" />
+            )}
           </View>
         </View>
 
@@ -349,6 +487,117 @@ const OrgDashboard = ({ route }: any) => {
             <Text style={styles.analyticsButtonText}>Detailed Reports</Text>
           </TouchableOpacity>
         </TouchableOpacity>
+
+      {/* Edit Profile Modal */}
+      <Modal 
+        visible={editModalVisible} 
+        transparent 
+        animationType="slide"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setEditModalVisible(false)}
+          />
+          <View style={styles.modalContent}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={styles.modalHeader}>Edit Profile</Text>
+              <View style={[styles.roleBadge, styles.roleBadgeOrg]}>
+                <Text style={[styles.roleBadgeText, { color: "#64748B" }]}>ORGANIZATION</Text>
+              </View>
+            </View>
+
+            {/* Avatar Picker */}
+            <TouchableOpacity onPress={pickAvatar} style={styles.avatarPickerContainer} activeOpacity={0.8}>
+              {(editingAvatar?.uri || profile?.avatar_url) ? (
+                <Image
+                  source={{ uri: editingAvatar?.uri || profile?.avatar_url }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Text style={styles.avatarPlaceholderText}>
+                    {profile?.full_name?.charAt(0)?.toUpperCase() || '?'}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.avatarCameraOverlay}>
+                <Camera size={14} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+            <Text style={styles.avatarHint}>Tap to change logo</Text>
+
+            <ScrollView 
+              nestedScrollEnabled={true}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ gap: 16, paddingBottom: 24 }}
+            >
+              {/* Organization Name field */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Organization Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter organization name"
+                  value={editingName}
+                  onChangeText={setEditingName}
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+
+              {/* Email field (Disabled) */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Email Address (Read-only)</Text>
+                <TextInput
+                  style={[styles.input, styles.disabledInput]}
+                  value={profile?.email || ""}
+                  editable={false}
+                  selectTextOnFocus={false}
+                />
+                <Text style={styles.disabledText}>
+                  Email cannot be edited because your cases and reports are associated with it.
+                </Text>
+              </View>
+
+              {/* Phone field */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Phone Number</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter phone number"
+                  keyboardType="phone-pad"
+                  value={editingPhone}
+                  onChangeText={setEditingPhone}
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+
+              {/* Buttons */}
+              <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
+                <TouchableOpacity 
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setEditModalVisible(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.modalButton, styles.saveButton, (saving || uploadingAvatar) && styles.buttonDisabled]}
+                  onPress={handleUpdateProfile}
+                  disabled={saving || uploadingAvatar}
+                >
+                  {(saving || uploadingAvatar) ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save Changes</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
       </View>
     </AppLayout>
   );
@@ -682,6 +931,166 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#64748B",
     marginTop: 2,
+  },
+  editProfileBadgeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    gap: 6,
+  },
+  editProfileBadgeText: {
+    fontSize: 10,
+    color: "#FFFFFF",
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  welcomeAvatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    gap: 12,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  roleBadge: { 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    borderRadius: 4, 
+    alignSelf: 'flex-start' 
+  },
+  roleBadgeOrg: { backgroundColor: "#F1F5F9" },
+  roleBadgeText: { fontSize: 10, fontWeight: "700", textTransform: "uppercase" },
+  inputGroup: {
+    gap: 6,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#475569",
+  },
+  input: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: "#0F172A",
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : {}) as any,
+  },
+  disabledInput: {
+    backgroundColor: "#F1F5F9",
+    borderColor: "#E2E8F0",
+    color: "#64748B",
+  },
+  disabledText: {
+    fontSize: 11,
+    color: "#94A3B8",
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  modalButton: {
+    flex: 1,
+    height: 46,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelButton: {
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  cancelButtonText: {
+    color: "#64748B",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  saveButton: {
+    backgroundColor: "#0EA5E9",
+  },
+  saveButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  avatarPickerContainer: {
+    alignSelf: 'center',
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    marginBottom: 4,
+    position: 'relative',
+  },
+  avatarImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 3,
+    borderColor: '#0EA5E9',
+  },
+  avatarPlaceholder: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#0EA5E9',
+  },
+  avatarPlaceholderText: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#0EA5E9',
+  },
+  avatarCameraOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#0EA5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  avatarHint: {
+    fontSize: 11,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginBottom: 12,
   },
 });
 

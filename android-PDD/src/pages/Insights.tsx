@@ -207,7 +207,9 @@ const Insights = () => {
         phone: editingPhone.trim(),
       };
 
-      if (profile.role === 'doctor') {
+      if (profile.role === 'organization') {
+        updateData.org_name = editingName.trim();
+      } else if (profile.role === 'doctor') {
         updateData.specialization = editingSpecialization.trim();
         updateData.org_id = editingOrg.id || null;
         updateData.org_name = editingOrg.name || null;

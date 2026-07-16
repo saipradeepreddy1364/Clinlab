@@ -44,6 +44,7 @@ const orgTabs: Tab[] = [
   { name: "OrgDoctors", label: "Doctors", icon: Users },
   { name: "OrgCases", label: "Cases", icon: ClipboardList },
   { name: "OrgReports", label: "Reports", icon: FileSearch },
+  { name: "Insights", label: "Insights", icon: BarChart3 },
 ];
 
 const labTabs: Tab[] = [
