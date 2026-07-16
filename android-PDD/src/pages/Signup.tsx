@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform, Modal, ActivityIndicator, Alert, SafeAreaView, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { Stethoscope, Loader2, ChevronDown, Search, Eye, EyeOff, Camera } from "lucide-react-native";
+import { Stethoscope, Loader2, ChevronDown, Search, Eye, EyeOff, Camera, ArrowLeft } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { notifyOrgOfPendingApproval } from "@/lib/notifications";
@@ -202,7 +202,10 @@ const Signup = () => {
 
   // Scroll to top when switching auth type
   useEffect(() => {
-    scrollRef.current?.scrollTo({ y: 0, animated: true });
+    const timer = setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    }, 100);
+    return () => clearTimeout(timer);
   }, [authType]);
 
   // Background auto-login polling if stuck on Signup modal
@@ -289,31 +292,37 @@ const Signup = () => {
   const handleSignup = async () => {
     const trimmedEmail = formData.email.trim().toLowerCase();
     if (!trimmedEmail || !formData.password || !formData.confirmPassword || !formData.name || !formData.phone) {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
       showAlert("Missing Fields", "Please fill in all mandatory fields.");
       return;
     }
 
     if (!trimmedEmail.endsWith("@gmail.com")) {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
       showAlert("Invalid Email Domain", "Email must be a valid Google email address ending with @gmail.com");
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
       showAlert("Passwords Mismatch", "The passwords you entered do not match.");
       return;
     }
 
     if (authType === "doctor" && (!formData.specialization || !formData.organization.id)) {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
       showAlert("Clinical Details Required", "Please select your role and organization.");
       return;
     }
 
     if (authType === "lab" && !formData.organization.id) {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
       showAlert("Organization Required", "Please select your organization.");
       return;
     }
 
     if ((authType === "doctor" || authType === "lab") && !profileImage) {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
       showAlert("Profile Photo Required", "Please upload a profile photo.");
       return;
     }
@@ -568,6 +577,15 @@ const Signup = () => {
     setTempUserId(null);
     showAlert("Registration Cancelled", "The verification process was aborted and your temporary details have been removed.");
     navigation.navigate("Login");
+  };
+
+  const handleCloseOtpModal = async () => {
+    if (tempUserId) {
+      await supabase.rpc('delete_rejected_user', { target_user_id: tempUserId });
+    }
+    setVerifyModalVisible(false);
+    setOtp("");
+    setTempUserId(null);
   };
 
   const pickProfileImage = async () => {
@@ -942,7 +960,13 @@ const Signup = () => {
       <Modal visible={verifyModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingBottom: 40 }]}>
-            <View style={{ width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 20 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 20 }}>
+              <TouchableOpacity onPress={handleCloseOtpModal} style={{ padding: 8 }}>
+                <ArrowLeft size={24} color="#64748B" />
+              </TouchableOpacity>
+              <View style={{ width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2 }} />
+              <View style={{ width: 40 }} />
+            </View>
             
             <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: '#F0F9FF', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 }}>
               <Stethoscope size={32} color="#0EA5E9" />
