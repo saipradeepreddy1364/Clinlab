@@ -46,7 +46,8 @@ const Signup = () => {
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [profileImage, setProfileImage] = useState<{ uri: string; base64?: string } | null>(null);
 
-  // Auto-fill logic for returning unverified users
+  // Auto-fill logic disabled to ensure clean, empty inputs
+  /*
   useEffect(() => {
     const checkExistingDraft = async () => {
       const trimmedEmail = formData.email.trim().toLowerCase();
@@ -95,6 +96,7 @@ const Signup = () => {
     const timer = setTimeout(checkExistingDraft, 1000); // Debounce
     return () => clearTimeout(timer);
   }, [formData.email, authType]);
+  */
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [googleResults, setGoogleResults] = useState<string[]>([]);
@@ -242,7 +244,8 @@ const Signup = () => {
     return () => clearInterval(pollSignIn);
   }, [pendingModalVisible, formData.email, formData.password, authType]);
 
-  // Save draft whenever formData changes (except password)
+  // Draft loading and saving disabled to ensure clean, empty inputs
+  /*
   useEffect(() => {
     const saveDraft = async () => {
       if (!formData.email) return;
@@ -288,6 +291,7 @@ const Signup = () => {
     };
     loadDraft();
   }, [formData.email]);
+  */
 
   const handleSignup = async () => {
     const trimmedEmail = formData.email.trim().toLowerCase();
@@ -709,6 +713,7 @@ const Signup = () => {
                 style={styles.input}
                 placeholder={authType === "organization" ? "Enter organization name" : "Enter full name"}
                 value={formData.name}
+                autoComplete="off"
                 onChangeText={(v) => {
                   setFormData({ ...formData, name: v });
                   if ((authType as string) === "organization") setShowSuggestions(true);
@@ -756,6 +761,7 @@ const Signup = () => {
                 placeholder="Enter email address"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoComplete="off"
                 value={formData.email}
                 onChangeText={(v) => setFormData({ ...formData, email: v })}
                 placeholderTextColor="#94A3B8"
@@ -767,6 +773,7 @@ const Signup = () => {
                 style={styles.input}
                 placeholder="Enter mobile number"
                 keyboardType="phone-pad"
+                autoComplete="off"
                 value={formData.phone}
                 onChangeText={(v) => setFormData({ ...formData, phone: v })}
                 placeholderTextColor="#94A3B8"
@@ -781,6 +788,7 @@ const Signup = () => {
                 style={styles.passwordInput}
                 placeholder="••••••••"
                 secureTextEntry={!showPassword}
+                autoComplete="new-password"
                 value={formData.password}
                 onChangeText={(v) => setFormData({ ...formData, password: v })}
                 placeholderTextColor="#94A3B8"
@@ -806,6 +814,7 @@ const Signup = () => {
                 style={styles.passwordInput}
                 placeholder="••••••••"
                 secureTextEntry={!showConfirmPassword}
+                autoComplete="new-password"
                 value={formData.confirmPassword}
                 onChangeText={(v) => setFormData({ ...formData, confirmPassword: v })}
                 placeholderTextColor="#94A3B8"
@@ -830,6 +839,7 @@ const Signup = () => {
               <TextInput
                 style={styles.input}
                 placeholder="e.g. Orthodontist"
+                autoComplete="off"
                 value={formData.specialization}
                 onChangeText={(v) => setFormData({ ...formData, specialization: v })}
                 placeholderTextColor="#94A3B8"
