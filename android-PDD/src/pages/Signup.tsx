@@ -115,7 +115,7 @@ const Signup = () => {
       console.log("Signup: Fetching organizations from Supabase...");
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, avatar_url')
         .eq('role', 'organization');
       
       if (error) {
@@ -936,13 +936,24 @@ const Signup = () => {
                     .map(org => (
                       <TouchableOpacity 
                         key={org.id} 
-                        style={styles.modalOption}
+                        style={styles.orgOptionRow}
                         onPress={() => {
                           setFormData({ ...formData, organization: { id: org.id, name: org.full_name } });
                           setOrgModalVisible(false);
                           setSearchQuery("");
                         }}
                       >
+                        <View style={styles.orgOptionLogoContainer}>
+                          {org.avatar_url ? (
+                            <Image source={{ uri: org.avatar_url }} style={styles.orgOptionLogo} />
+                          ) : (
+                            <View style={styles.orgOptionLogoPlaceholder}>
+                              <Text style={styles.orgOptionLogoText}>
+                                {org.full_name?.charAt(0)?.toUpperCase() || 'O'}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                         <Text style={styles.modalOptionText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>{org.full_name}</Text>
                       </TouchableOpacity>
                     ))
@@ -1428,6 +1439,39 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#94A3B8',
     textAlign: 'center',
+  },
+  orgOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    gap: 12,
+  },
+  orgOptionLogoContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  orgOptionLogo: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  orgOptionLogoPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orgOptionLogoText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0EA5E9',
   },
 });
 

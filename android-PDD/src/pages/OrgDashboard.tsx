@@ -322,11 +322,15 @@ const OrgDashboard = ({ route }: any) => {
               </TouchableOpacity>
             </View>
           </View>
-          <View style={styles.welcomeIconBox}>
+          <View style={styles.dashboardAvatarContainer}>
             {profile?.avatar_url ? (
-              <Image source={{ uri: profile.avatar_url }} style={styles.welcomeAvatarImage} />
+              <Image source={{ uri: profile.avatar_url }} style={styles.dashboardAvatar} />
             ) : (
-              <Stethoscope size={32} color="#FFFFFF" />
+              <View style={styles.dashboardAvatarPlaceholder}>
+                <Text style={styles.dashboardAvatarPlaceholderText}>
+                  {(profile?.full_name || profile?.org_name || "O").charAt(0).toUpperCase()}
+                </Text>
+              </View>
             )}
           </View>
         </View>
@@ -947,10 +951,30 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textTransform: "uppercase",
   },
-  welcomeAvatarImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
+  dashboardAvatarContainer: {
+    marginLeft: 16,
+  },
+  dashboardAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.6)',
+  },
+  dashboardAvatarPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.6)',
+  },
+  dashboardAvatarPlaceholderText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
   },
   modalContainer: {
     flex: 1,
