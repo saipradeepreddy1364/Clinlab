@@ -651,7 +651,7 @@ const Signup = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} nativeID="signup-container">
+    <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.keyboardView}
@@ -1101,28 +1101,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-    ...Platform.select({
-      web: {
-        height: '100vh',
-      }
-    })
   },
   keyboardView: {
     flex: 1,
-    ...Platform.select({
-      web: {
-        height: '100%',
-      }
-    })
   },
   scrollView: {
     flex: 1,
     width: '100%',
-    ...Platform.select({
-      web: {
-        height: '100%',
-      }
-    })
   },
   scrollContent: {
     padding: 24,

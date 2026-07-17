@@ -119,6 +119,7 @@ export default defineConfig(({ mode }) => ({
       "expo-modules-core"
     ],
     esbuildOptions: {
+      resolveExtensions: ['.web.tsx', '.web.ts', '.web.jsx', '.web.js', '.tsx', '.ts', '.jsx', '.js'],
       loader: {
         '.js': 'jsx',
       },

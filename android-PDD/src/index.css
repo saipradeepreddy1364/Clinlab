@@ -157,29 +157,3 @@
 }
 .animate-fade-up { animation: fade-up 0.4s ease-out both; }
 .animate-pulse-glow { animation: pulse-glow 2s ease-out infinite; }
-
-/* Web Signup Page Touchpad Scroll Fix */
-#signup-container {
-  height: 100vh !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-}
-
-/* KeyboardAvoidingView level */
-#signup-container > div {
-  height: auto !important;
-  flex: none !important;
-}
-
-/* ScrollView outer container level */
-#signup-container > div > div {
-  height: auto !important;
-  overflow: visible !important;
-  flex: none !important;
-}
-
-/* ScrollView inner content container level */
-#signup-container > div > div > div {
-  height: auto !important;
-  overflow: visible !important;
-}
