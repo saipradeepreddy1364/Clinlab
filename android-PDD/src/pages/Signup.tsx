@@ -650,30 +650,21 @@ const Signup = () => {
     }
   };
 
-  const Wrapper = Platform.OS === 'web'
-    ? ({ children }: any) => <View style={styles.webContentContainer}>{children}</View>
-    : ({ children }: any) => (
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.keyboardView}
-        >
-          <ScrollView 
-            ref={scrollRef}
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={true}
-            bounces={true}
-            scrollEnabled={true}
-            keyboardShouldPersistTaps="always"
-          >
-            {children}
-          </ScrollView>
-        </KeyboardAvoidingView>
-      );
-
   return (
     <SafeAreaView style={styles.container}>
-      <Wrapper>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.keyboardView}
+      >
+        <ScrollView 
+          ref={scrollRef}
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={true}
+          bounces={true}
+          scrollEnabled={true}
+          keyboardShouldPersistTaps="always"
+        >
         <View style={styles.hero}>
           <Text style={styles.title}>Create account</Text>
           <Text style={styles.subtitle}>Fill in your details to get started.</Text>
@@ -913,7 +904,7 @@ const Signup = () => {
             Already have an account? <Text style={styles.linkText}>Sign in</Text>
           </Text>
         </TouchableOpacity>
-      </Wrapper>
+      </ScrollView>
 
       {roleModalVisible && (
         <Modal visible={roleModalVisible} transparent animationType="slide">
@@ -1101,6 +1092,7 @@ const Signup = () => {
           </View>
         </Modal>
       )}
+    </KeyboardAvoidingView>
   </SafeAreaView>
   );
 };
@@ -1112,24 +1104,14 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         height: '100vh',
-        overflowY: 'auto',
       }
     })
-  },
-  webContentContainer: {
-    padding: 24,
-    paddingTop: 40,
-    paddingBottom: 80,
-    gap: 16,
-    width: '100%',
-    maxWidth: 480,
-    alignSelf: 'center',
   },
   keyboardView: {
     flex: 1,
     ...Platform.select({
       web: {
-        height: 'auto',
+        height: '100%',
       }
     })
   },
@@ -1138,7 +1120,7 @@ const styles = StyleSheet.create({
     width: '100%',
     ...Platform.select({
       web: {
-        height: 'auto',
+        height: '100%',
       }
     })
   },
