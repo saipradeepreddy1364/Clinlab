@@ -650,21 +650,30 @@ const Signup = () => {
     }
   };
 
+  const Wrapper = Platform.OS === 'web'
+    ? ({ children }: any) => <View style={styles.webContentContainer}>{children}</View>
+    : ({ children }: any) => (
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.keyboardView}
+        >
+          <ScrollView 
+            ref={scrollRef}
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={true}
+            bounces={true}
+            scrollEnabled={true}
+            keyboardShouldPersistTaps="always"
+          >
+            {children}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      );
+
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.keyboardView}
-      >
-        <ScrollView 
-          ref={scrollRef}
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={true}
-          bounces={true}
-          scrollEnabled={true}
-          keyboardShouldPersistTaps="always"
-        >
+      <Wrapper>
         <View style={styles.hero}>
           <Text style={styles.title}>Create account</Text>
           <Text style={styles.subtitle}>Fill in your details to get started.</Text>
@@ -904,186 +913,194 @@ const Signup = () => {
             Already have an account? <Text style={styles.linkText}>Sign in</Text>
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </Wrapper>
 
-      <Modal visible={roleModalVisible} transparent animationType="slide">
-        <TouchableOpacity style={styles.modalOverlay} onPress={() => setRoleModalVisible(false)}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalHeader}>Select Clinical Role</Text>
-            {["dentist", "assistant", "therapist"].map(v => (
+      {roleModalVisible && (
+        <Modal visible={roleModalVisible} transparent animationType="slide">
+          <TouchableOpacity style={styles.modalOverlay} onPress={() => setRoleModalVisible(false)}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalHeader}>Select Clinical Role</Text>
+              {["dentist", "assistant", "therapist"].map(v => (
+                <TouchableOpacity 
+                  key={v} 
+                  style={styles.modalOption}
+                  onPress={() => {
+                    setFormData({ ...formData, role: v });
+                    setRoleModalVisible(false);
+                  }}
+                >
+                  <Text style={styles.modalOptionText}>{v.charAt(0).toUpperCase() + v.slice(1)}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
+
+      {orgModalVisible && (
+        <Modal visible={orgModalVisible} transparent animationType="slide">
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => { setOrgModalVisible(false); setSearchQuery(""); }}>
+            <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+              <Text style={styles.modalHeader}>Registered Organizations</Text>
+              
+              <View style={styles.searchContainer}>
+                <Search size={18} color="#94A3B8" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search clinic name..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+
+              <View style={{ maxHeight: 400 }}>
+                <ScrollView 
+                  nestedScrollEnabled={true}
+                  keyboardShouldPersistTaps="handled"
+                  scrollEventThrottle={16}
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                >
+                  {organizations.length > 0 ? (
+                    organizations
+                      .filter(org => org.full_name?.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .map(org => (
+                        <TouchableOpacity 
+                          key={org.id} 
+                          style={styles.orgOptionRow}
+                          onPress={() => {
+                            setFormData({ ...formData, organization: { id: org.id, name: org.full_name } });
+                            setOrgModalVisible(false);
+                            setSearchQuery("");
+                          }}
+                        >
+                          <View style={styles.orgOptionLogoContainer}>
+                            {org.avatar_url ? (
+                              <Image source={{ uri: org.avatar_url }} style={styles.orgOptionLogo} />
+                            ) : (
+                              <View style={styles.orgOptionLogoPlaceholder}>
+                                <Text style={styles.orgOptionLogoText}>
+                                  {org.full_name?.charAt(0)?.toUpperCase() || 'O'}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.modalOptionText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>{org.full_name}</Text>
+                        </TouchableOpacity>
+                      ))
+                  ) : (
+                    <View style={styles.emptyState}>
+                      <Text style={styles.noData}>No organizations found in Supabase.</Text>
+                      <Text style={styles.hintText}>Make sure your clinic has registered as an "Organization" first.</Text>
+                    </View>
+                  )}
+                </ScrollView>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
+
+      {verifyModalVisible && (
+        <Modal visible={verifyModalVisible} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingBottom: 40 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 20 }}>
+                <TouchableOpacity onPress={handleCloseOtpModal} style={{ padding: 8 }}>
+                  <ArrowLeft size={24} color="#64748B" />
+                </TouchableOpacity>
+                <View style={{ width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2 }} />
+                <View style={{ width: 40 }} />
+              </View>
+              
+              <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: '#F0F9FF', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 }}>
+                <Stethoscope size={32} color="#0EA5E9" />
+              </View>
+
+              <Text style={[styles.modalHeader, { textAlign: 'center' }]}>Verify Your Email</Text>
+              <Text style={{ textAlign: 'center', color: '#64748B', marginBottom: 24, lineHeight: 22, fontSize: 15 }}>
+                We've sent a 6-digit verification code to{"\n"}
+                <Text style={{ fontWeight: '700', color: '#0EA5E9' }}>{formData.email}</Text>.{"\n"}
+                Please enter it below to activate your account.
+              </Text>
+
+              <View style={styles.otpInputGroup}>
+                <TextInput
+                  style={styles.otpInput}
+                  placeholder="000000"
+                  maxLength={6}
+                  keyboardType="number-pad"
+                  value={otp}
+                  onChangeText={setOtp}
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+              
               <TouchableOpacity 
-                key={v} 
-                style={styles.modalOption}
-                onPress={() => {
-                  setFormData({ ...formData, role: v });
-                  setRoleModalVisible(false);
-                }}
+                style={[styles.heroButton, { width: '100%', marginBottom: 16 }]} 
+                onPress={handleVerifyOtp}
+                disabled={loading}
               >
-                <Text style={styles.modalOptionText}>{v.charAt(0).toUpperCase() + v.slice(1)}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      <Modal visible={orgModalVisible} transparent animationType="slide">
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => { setOrgModalVisible(false); setSearchQuery(""); }}>
-          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
-            <Text style={styles.modalHeader}>Registered Organizations</Text>
-            
-            <View style={styles.searchContainer}>
-              <Search size={18} color="#94A3B8" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search clinic name..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholderTextColor="#94A3B8"
-              />
-            </View>
-
-            <View style={{ maxHeight: 400 }}>
-              <ScrollView 
-                nestedScrollEnabled={true}
-                keyboardShouldPersistTaps="handled"
-                scrollEventThrottle={16}
-                contentContainerStyle={{ paddingBottom: 20 }}
-              >
-                {organizations.length > 0 ? (
-                  organizations
-                    .filter(org => org.full_name?.toLowerCase().includes(searchQuery.toLowerCase()))
-                    .map(org => (
-                      <TouchableOpacity 
-                        key={org.id} 
-                        style={styles.orgOptionRow}
-                        onPress={() => {
-                          setFormData({ ...formData, organization: { id: org.id, name: org.full_name } });
-                          setOrgModalVisible(false);
-                          setSearchQuery("");
-                        }}
-                      >
-                        <View style={styles.orgOptionLogoContainer}>
-                          {org.avatar_url ? (
-                            <Image source={{ uri: org.avatar_url }} style={styles.orgOptionLogo} />
-                          ) : (
-                            <View style={styles.orgOptionLogoPlaceholder}>
-                              <Text style={styles.orgOptionLogoText}>
-                                {org.full_name?.charAt(0)?.toUpperCase() || 'O'}
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text style={styles.modalOptionText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>{org.full_name}</Text>
-                      </TouchableOpacity>
-                    ))
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <View style={styles.emptyState}>
-                    <Text style={styles.noData}>No organizations found in Supabase.</Text>
-                    <Text style={styles.hintText}>Make sure your clinic has registered as an "Organization" first.</Text>
-                  </View>
+                  <Text style={styles.heroButtonText}>Verify & Continue</Text>
                 )}
-              </ScrollView>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-      <Modal visible={verifyModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingBottom: 40 }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 20 }}>
-              <TouchableOpacity onPress={handleCloseOtpModal} style={{ padding: 8 }}>
-                <ArrowLeft size={24} color="#64748B" />
               </TouchableOpacity>
-              <View style={{ width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2 }} />
-              <View style={{ width: 40 }} />
-            </View>
-            
-            <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: '#F0F9FF', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 }}>
-              <Stethoscope size={32} color="#0EA5E9" />
-            </View>
 
-            <Text style={[styles.modalHeader, { textAlign: 'center' }]}>Verify Your Email</Text>
-            <Text style={{ textAlign: 'center', color: '#64748B', marginBottom: 24, lineHeight: 22, fontSize: 15 }}>
-              We've sent a 6-digit verification code to{"\n"}
-              <Text style={{ fontWeight: '700', color: '#0EA5E9' }}>{formData.email}</Text>.{"\n"}
-              Please enter it below to activate your account.
-            </Text>
+              <TouchableOpacity 
+                onPress={async () => {
+                  setLoading(true);
+                  const { error } = await supabase.auth.resend({
+                    type: 'signup',
+                    email: formData.email,
+                  });
+                  setLoading(false);
+                  if (error) showAlert("Resend Failed", error.message);
+                  else showAlert("Sent!", "A new 6-digit code has been sent to your email.");
+                }}
+                style={{ alignSelf: 'center', padding: 15, width: '100%', alignItems: 'center' }}
+              >
+                <Text style={{ color: '#0EA5E9', fontSize: 15, fontWeight: '700', textDecorationLine: 'underline' }}>Resend Verification Code</Text>
+              </TouchableOpacity>
 
-            <View style={styles.otpInputGroup}>
-              <TextInput
-                style={styles.otpInput}
-                placeholder="000000"
-                maxLength={6}
-                keyboardType="number-pad"
-                value={otp}
-                onChangeText={setOtp}
-                placeholderTextColor="#94A3B8"
-              />
-            </View>
-            
-            <TouchableOpacity 
-              style={[styles.heroButton, { width: '100%', marginBottom: 16 }]} 
-              onPress={handleVerifyOtp}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.heroButtonText}>Verify & Continue</Text>
-              )}
-            </TouchableOpacity>
+              <View style={{ height: 20 }} />
 
-            <TouchableOpacity 
-              onPress={async () => {
-                setLoading(true);
-                const { error } = await supabase.auth.resend({
-                  type: 'signup',
-                  email: formData.email,
-                });
-                setLoading(false);
-                if (error) showAlert("Resend Failed", error.message);
-                else showAlert("Sent!", "A new 6-digit code has been sent to your email.");
-              }}
-              style={{ alignSelf: 'center', padding: 15, width: '100%', alignItems: 'center' }}
-            >
-              <Text style={{ color: '#0EA5E9', fontSize: 15, fontWeight: '700', textDecorationLine: 'underline' }}>Resend Verification Code</Text>
-            </TouchableOpacity>
-
-            <View style={{ height: 20 }} />
-
-            <TouchableOpacity 
-              onPress={handleCancelSignup}
-              style={{ alignSelf: 'center', padding: 10 }}
-            >
-              <Text style={{ color: '#EF4444', fontSize: 14, fontWeight: '600' }}>Cancel Registration</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={pendingModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingBottom: 40 }]}>
-            <View style={{ width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 20 }} />
-            
-            <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: '#FFFBEB', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 }}>
-              <Stethoscope size={32} color="#F59E0B" />
-            </View>
-
-            <Text style={[styles.modalHeader, { textAlign: 'center' }]}>Waiting for Approval</Text>
-            <Text style={{ textAlign: 'center', color: '#64748B', marginBottom: 24, lineHeight: 22, fontSize: 15 }}>
-              Your application has been sent to{"\n"}
-              <Text style={{ fontWeight: '700', color: '#0F172A' }}>{formData.organization.name}</Text>.{"\n\n"}
-              You will be able to log in once the organization administrator approves your access.
-            </Text>
-            <View style={{ marginTop: 8, alignItems: 'center' }}>
-              <ActivityIndicator size="large" color="#F59E0B" />
-              <Text style={{ marginTop: 12, color: '#F59E0B', fontWeight: '600' }}>Checking status automatically...</Text>
+              <TouchableOpacity 
+                onPress={handleCancelSignup}
+                style={{ alignSelf: 'center', padding: 10 }}
+              >
+                <Text style={{ color: '#EF4444', fontSize: 14, fontWeight: '600' }}>Cancel Registration</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </View>
-      </Modal>
-    </KeyboardAvoidingView>
+        </Modal>
+      )}
+
+      {pendingModalVisible && (
+        <Modal visible={pendingModalVisible} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingBottom: 40 }]}>
+              <View style={{ width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 20 }} />
+              
+              <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: '#FFFBEB', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 }}>
+                <Stethoscope size={32} color="#F59E0B" />
+              </View>
+
+              <Text style={[styles.modalHeader, { textAlign: 'center' }]}>Waiting for Approval</Text>
+              <Text style={{ textAlign: 'center', color: '#64748B', marginBottom: 24, lineHeight: 22, fontSize: 15 }}>
+                Your application has been sent to{"\n"}
+                <Text style={{ fontWeight: '700', color: '#0F172A' }}>{formData.organization.name}</Text>.{"\n\n"}
+                You will be able to log in once the organization administrator approves your access.
+              </Text>
+              <View style={{ marginTop: 8, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#F59E0B" />
+                <Text style={{ marginTop: 12, color: '#F59E0B', fontWeight: '600' }}>Checking status automatically...</Text>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
   </SafeAreaView>
   );
 };
@@ -1098,6 +1115,15 @@ const styles = StyleSheet.create({
         overflowY: 'auto',
       }
     })
+  },
+  webContentContainer: {
+    padding: 24,
+    paddingTop: 40,
+    paddingBottom: 80,
+    gap: 16,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
   },
   keyboardView: {
     flex: 1,
