@@ -645,7 +645,7 @@ const Signup = () => {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1 }}
+        style={styles.keyboardView}
       >
         <ScrollView 
           ref={scrollRef}
@@ -1083,10 +1083,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
+    ...Platform.select({
+      web: {
+        height: '100vh',
+        overflow: 'hidden',
+      }
+    })
+  },
+  keyboardView: {
+    flex: 1,
+    ...Platform.select({
+      web: {
+        height: '100%',
+      }
+    })
   },
   scrollView: {
     flex: 1,
     width: '100%',
+    ...Platform.select({
+      web: {
+        height: '100%',
+      }
+    })
   },
   scrollContent: {
     padding: 24,
