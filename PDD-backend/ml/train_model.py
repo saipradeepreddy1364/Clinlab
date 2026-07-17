@@ -25,6 +25,16 @@ print(f"Columns: {list(df.columns)}")
 print(f"\nProcedures found: {df['procedure'].nunique()}")
 print(f"Unique next steps: {df['next_step'].nunique()}")
 
+# Display all rows from the dataset
+print("\n" + "=" * 60)
+print("TRAINED DATASET ROWS")
+print("=" * 60)
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', 1000)
+print(df.to_string(index=False))
+print("=" * 60)
+
 # ============================================================
 # STEP 2 — Feature Engineering
 # ============================================================
