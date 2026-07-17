@@ -8,6 +8,7 @@ import {
   Modal,
   ActivityIndicator,
   TextInput,
+  Platform,
 } from "react-native";
 import {
   ArrowRight,
@@ -19,19 +20,47 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle2,
+  Upload,
+  Plus,
+  Activity,
 } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
+import { useAppData } from "@/lib/AppDataContext";
 
 import AppLayout from "@/components/AppLayout";
 import {
   fetchProcedures,
   fetchWorkflow,
+  fetchModelInfo,
+  addProcedureStep,
+  uploadProceduresCsv,
+  uploadProceduresDocument,
+  retrainModel,
   type ProceduresResponse,
   type WorkflowStep,
   type WorkflowResponse,
+  type ModelMetadata,
 } from "@/lib/backendApi";
 
 const Procedures = () => {
+  const { data: appData } = useAppData();
+  const role = appData?.role || "doctor";
+
+  // ── Model & Admin Management States ──────────────────────────────────────
+  const [modelInfo, setModelInfo] = useState<ModelMetadata | null>(null);
+  const [loadingModelInfo, setLoadingModelInfo] = useState(false);
+  const [modelInfoError, setModelInfoError] = useState<string | null>(null);
+  const [uploadingCsv, setUploadingCsv] = useState(false);
+  const [retraining, setRetraining] = useState(false);
+
+  // Manual Step addition form states
+  const [addStepModalVisible, setAddStepModalVisible] = useState(false);
+  const [newProcName, setNewProcName] = useState("");
+  const [newProcSubtype, setNewProcSubtype] = useState("");
+  const [newProcCurrent, setNewProcCurrent] = useState("");
+  const [newProcNext, setNewProcNext] = useState("");
+  const [savingNewStep, setSavingNewStep] = useState(false);
+
   // ── Patient case ──────────────────────────────────────────────────────────
   const [cases, setCases] = useState<any[]>([]);
   const [selectedCase, setSelectedCase] = useState<any>(null);
@@ -62,6 +91,189 @@ const Procedures = () => {
   const [showStepPicker, setShowStepPicker] = useState(false);
 
   const [autoSelecting, setAutoSelecting] = useState(false);
+
+  // ── Load procedures & model info on mount ─────────────────────────────────
+  const loadModelInfo = async () => {
+    try {
+      setLoadingModelInfo(true);
+      setModelInfoError(null);
+      const info = await fetchModelInfo();
+      setModelInfo(info);
+    } catch (err: any) {
+      console.error(err);
+      setModelInfoError("Could not retrieve AI model info.");
+    } finally {
+      setLoadingModelInfo(false);
+    }
+  };
+
+  useEffect(() => {
+    if (role === "organization") {
+      loadModelInfo();
+    }
+  }, [role]);
+
+  const handlePickDocument = () => {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.csv,text/csv,.pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      input.multiple = false;
+      input.onchange = async (e: any) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        try {
+          setUploadingCsv(true);
+          const buffer = await file.arrayBuffer();
+          const bytes = new Uint8Array(buffer);
+          
+          let result;
+          if (ext === 'csv') {
+            result = await uploadProceduresCsv(file.name, file.type || 'text/csv', bytes);
+          } else {
+            result = await uploadProceduresDocument(file.name, file.type || 'application/octet-stream', bytes);
+          }
+          
+          if (result.success) {
+            alert(result.message || "Document processed and steps imported successfully!");
+            loadModelInfo();
+            const procs = await fetchProcedures();
+            setProceduresMap(procs);
+          } else {
+            alert("Upload failed: " + (result.message || "Unknown error"));
+          }
+        } catch (err: any) {
+          alert('Upload failed: ' + err.message);
+        } finally {
+          setUploadingCsv(false);
+        }
+      };
+      input.click();
+    } else {
+      (async () => {
+        try {
+          const DocumentPicker = await import('expo-document-picker');
+          const result = await DocumentPicker.getDocumentAsync({
+            type: [
+              'text/comma-separated-values', 
+              'text/csv', 
+              'application/pdf', 
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            ],
+            copyToCacheDirectory: true,
+          });
+
+          if (result.canceled || !result.assets || result.assets.length === 0) return;
+          const asset = result.assets[0];
+
+          setUploadingCsv(true);
+          try {
+            const FileSystem = await import('expo-file-system/legacy');
+            const base64 = await (FileSystem as any).readAsStringAsync(asset.uri, {
+              encoding: (FileSystem as any).EncodingType?.Base64 || 'base64',
+            });
+
+            const binaryStr = atob(base64);
+            const bytes = new Uint8Array(binaryStr.length);
+            for (let i = 0; i < binaryStr.length; i++) {
+              bytes[i] = binaryStr.charCodeAt(i);
+            }
+            
+            const ext = asset.name.split('.').pop()?.toLowerCase();
+            let uploadResult;
+            if (ext === 'csv') {
+              uploadResult = await uploadProceduresCsv(
+                asset.name, 
+                asset.mimeType || 'text/csv', 
+                bytes,
+                asset.uri
+              );
+            } else {
+              uploadResult = await uploadProceduresDocument(
+                asset.name,
+                asset.mimeType || 'application/octet-stream',
+                bytes,
+                asset.uri
+              );
+            }
+            
+            if (uploadResult.success) {
+              alert(uploadResult.message || "Document processed and steps imported successfully!");
+              loadModelInfo();
+              const procs = await fetchProcedures();
+              setProceduresMap(procs);
+            } else {
+              alert("Upload failed: " + (uploadResult.message || "Unknown error"));
+            }
+          } catch (fsErr: any) {
+            alert("Could not process picked file: " + fsErr.message);
+          }
+        } catch (err: any) {
+          alert('Could not open file picker: ' + err.message);
+        } finally {
+          setUploadingCsv(false);
+        }
+      })();
+    }
+  };
+
+  const handleRetrain = async () => {
+    try {
+      setRetraining(true);
+      const res = await retrainModel();
+      if (res.success) {
+        alert(res.message || "Model retrained and loaded in production!");
+        if (res.metadata) {
+          setModelInfo(res.metadata);
+        } else {
+          loadModelInfo();
+        }
+        const procs = await fetchProcedures();
+        setProceduresMap(procs);
+      } else {
+        alert("Retraining failed: " + (res.message || "Unknown error"));
+      }
+    } catch (err: any) {
+      alert("Retraining failed: " + err.message);
+    } finally {
+      setRetraining(false);
+    }
+  };
+
+  const handleSaveStep = async () => {
+    if (!newProcName.trim() || !newProcCurrent.trim() || !newProcNext.trim()) {
+      alert("Procedure, Current Step, and Next Step are required fields.");
+      return;
+    }
+    try {
+      setSavingNewStep(true);
+      const res = await addProcedureStep({
+        procedure: newProcName.trim(),
+        subtype: newProcSubtype.trim(),
+        current_step: newProcCurrent.trim(),
+        next_step: newProcNext.trim(),
+      });
+      if (res.success) {
+        alert(res.message || "New transition step saved successfully!");
+        setAddStepModalVisible(false);
+        setNewProcName("");
+        setNewProcSubtype("");
+        setNewProcCurrent("");
+        setNewProcNext("");
+        loadModelInfo();
+        const procs = await fetchProcedures();
+        setProceduresMap(procs);
+      } else {
+        alert("Could not add step: " + (res.message || "Unknown error"));
+      }
+    } catch (err: any) {
+      alert("Error saving step: " + err.message);
+    } finally {
+      setSavingNewStep(false);
+    }
+  };
 
   // ── Load procedures on mount ──────────────────────────────────────────────
   useEffect(() => {
@@ -418,11 +630,168 @@ ${fileAnalysis ? `Clinical Files/Radiograph Analysis: ${fileAnalysis}` : ""}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
+        {role === "organization" && (
+          <View style={styles.adminCard}>
+            <View style={styles.adminHeader}>
+              <Activity size={18} color="#8B5CF6" />
+              <Text style={styles.adminTitle}>AI Model & Procedures Admin Panel</Text>
+            </View>
+
+            {loadingModelInfo && (
+              <View style={styles.adminLoadingRow}>
+                <ActivityIndicator size="small" color="#8B5CF6" />
+                <Text style={styles.adminLoadingText}>Fetching model statistics...</Text>
+              </View>
+            )}
+
+            {modelInfoError && !loadingModelInfo && (
+              <View style={styles.adminErrorRow}>
+                <AlertCircle size={16} color="#EF4444" />
+                <Text style={styles.adminErrorText}>{modelInfoError}</Text>
+                <TouchableOpacity onPress={loadModelInfo}>
+                  <RefreshCw size={14} color="#8B5CF6" />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {modelInfo && !loadingModelInfo && (
+              <View style={styles.modelInfoSection}>
+                <Text style={styles.modelSectionTitle}>Current Model Configuration</Text>
+                <View style={styles.metaGrid}>
+                  <View style={styles.metaBox}>
+                    <Text style={styles.metaLabel}>Best Model</Text>
+                    <Text style={styles.metaValue}>{modelInfo.best_model || "None"}</Text>
+                  </View>
+                  <View style={styles.metaBox}>
+                    <Text style={styles.metaLabel}>Accuracy</Text>
+                    <Text style={styles.metaValue}>
+                      {modelInfo.accuracy ? `${(modelInfo.accuracy * 100).toFixed(1)}%` : "N/A"}
+                    </Text>
+                  </View>
+                  <View style={styles.metaBox}>
+                    <Text style={styles.metaLabel}>Training Rows</Text>
+                    <Text style={styles.metaValue}>{modelInfo.total_training_rows ?? 0}</Text>
+                  </View>
+                  <View style={styles.metaBox}>
+                    <Text style={styles.metaLabel}>Unique Classes</Text>
+                    <Text style={styles.metaValue}>{modelInfo.total_classes ?? 0}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            <View style={styles.adminActions}>
+              <TouchableOpacity 
+                style={[styles.adminBtn, styles.btnOutline]} 
+                onPress={handlePickDocument}
+                disabled={uploadingCsv}
+              >
+                {uploadingCsv ? (
+                  <ActivityIndicator size="small" color="#8B5CF6" />
+                ) : (
+                  <>
+                    <Upload size={14} color="#8B5CF6" />
+                    <Text style={styles.btnOutlineText}>Upload Document (PDF/Word/CSV)</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.adminBtn, styles.btnOutline]} 
+                onPress={() => setAddStepModalVisible(true)}
+              >
+                <Plus size={14} color="#8B5CF6" />
+                <Text style={styles.btnOutlineText}>Add Step</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.adminBtn, styles.btnSolid]} 
+                onPress={handleRetrain}
+                disabled={retraining}
+              >
+                {retraining ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <RefreshCw size={14} color="#FFFFFF" />
+                    <Text style={styles.btnSolidText}>Retrain ML Model</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         <Text style={styles.description}>
           Select a procedure and subtype to fetch the complete clinical workflow.
         </Text>
 
+        {/* Add Step Modal */}
+        <Modal visible={addStepModalVisible} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalSheet, { maxHeight: "85%" }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add Procedure Step</Text>
+                <TouchableOpacity onPress={() => setAddStepModalVisible(false)}>
+                  <X size={20} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 14, paddingBottom: 20 }}>
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Procedure Name *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. Complete Denture, FPD"
+                    value={newProcName}
+                    onChangeText={setNewProcName}
+                  />
+                </View>
 
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Subtype (Optional)</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. Metal Ceramic, Manual"
+                    value={newProcSubtype}
+                    onChangeText={setNewProcSubtype}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Current Step *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. Casting, Wax Pattern"
+                    value={newProcCurrent}
+                    onChangeText={setNewProcCurrent}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Next Step *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. Finishing and Polishing, Completed"
+                    value={newProcNext}
+                    onChangeText={setNewProcNext}
+                  />
+                </View>
+
+                <TouchableOpacity 
+                  style={[styles.formSubmitBtn, savingNewStep && { opacity: 0.7 }]}
+                  onPress={handleSaveStep}
+                  disabled={savingNewStep}
+                >
+                  {savingNewStep ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.formSubmitBtnText}>Save Step Transition</Text>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
 
         {/* Procedure Picker Modal */}
         <Modal visible={showProcPicker} transparent animationType="slide">
@@ -1393,6 +1762,160 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#64748B",
     textDecorationLine: "underline",
+  },
+  // ── Admin Panel Styles ──
+  adminCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    gap: 14,
+    marginBottom: 10,
+  },
+  adminHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+    paddingBottom: 10,
+  },
+  adminTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  adminLoadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 10,
+  },
+  adminLoadingText: {
+    fontSize: 12,
+    color: "#8B5CF6",
+    fontStyle: "italic",
+  },
+  adminErrorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FEF2F2",
+    borderRadius: 10,
+    padding: 10,
+  },
+  adminErrorText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#EF4444",
+  },
+  modelInfoSection: {
+    gap: 8,
+  },
+  modelSectionTitle: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#64748B",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  metaGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  metaBox: {
+    flex: 1,
+    minWidth: "45%",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    gap: 2,
+  },
+  metaLabel: {
+    fontSize: 9,
+    fontWeight: "600",
+    color: "#94A3B8",
+    textTransform: "uppercase",
+  },
+  metaValue: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#334155",
+  },
+  adminActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 6,
+  },
+  adminBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    height: 38,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    flexGrow: 1,
+  },
+  btnOutline: {
+    backgroundColor: "rgba(139, 92, 246, 0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(139, 92, 246, 0.2)",
+  },
+  btnOutlineText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#8B5CF6",
+  },
+  btnSolid: {
+    backgroundColor: "#8B5CF6",
+  },
+  btnSolidText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  // ── Form Modal Styles ──
+  formGroup: {
+    gap: 6,
+  },
+  formLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#475569",
+  },
+  formInput: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 42,
+    fontSize: 13,
+    color: "#0F172A",
+  },
+  formSubmitBtn: {
+    backgroundColor: "#8B5CF6",
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  formSubmitBtnText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });
 

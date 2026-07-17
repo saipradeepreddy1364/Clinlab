@@ -14,6 +14,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 
 @Service
 public class ProcedureService {
@@ -211,6 +214,82 @@ public class ProcedureService {
         } catch (Exception e) {
             log.warn("Flask procedures call failed: {}. Falling back to static procedures list.", e.getMessage());
             return new HashMap<>(FALLBACK_PROCEDURES);
+        }
+    }
+
+    // ── Add single procedure step ──────────────────────────────────────────────
+    public Map<String, Object> addProcedureStep(Map<String, String> request) {
+        String url = flaskApiUrl + "/api/procedures/add";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Map<String, String>> entity = new HttpEntity<>(request, headers);
+
+        try {
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url, HttpMethod.POST, entity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {});
+            return response.getBody();
+        } catch (Exception e) {
+            log.error("Flask procedures add call failed: {}", e.getMessage());
+            return Map.of("success", false, "error", e.getMessage());
+        }
+    }
+
+    // ── Upload procedures CSV ──────────────────────────────────────────────────
+    public Map<String, Object> uploadProceduresCsv(MultipartFile file) {
+        String url = flaskApiUrl + "/api/procedures/upload-csv";
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("file", file.getResource());
+
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url, HttpMethod.POST, requestEntity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {});
+            return response.getBody();
+        } catch (Exception e) {
+            log.error("Flask upload CSV call failed: {}", e.getMessage());
+            return Map.of("success", false, "error", e.getMessage());
+        }
+    }
+
+    // ── Upload procedures Document (PDF, Word, TXT) ────────────────────────────
+    public Map<String, Object> uploadProceduresDocument(MultipartFile file) {
+        String url = flaskApiUrl + "/api/procedures/upload-document";
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("file", file.getResource());
+
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url, HttpMethod.POST, requestEntity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {});
+            return response.getBody();
+        } catch (Exception e) {
+            log.error("Flask upload document call failed: {}", e.getMessage());
+            return Map.of("success", false, "error", e.getMessage());
+        }
+    }
+
+    // ── Retrain ML model ───────────────────────────────────────────────────────
+    public Map<String, Object> retrainModel() {
+        String url = flaskApiUrl + "/api/procedures/retrain";
+        try {
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url, HttpMethod.POST, null,
+                    new ParameterizedTypeReference<Map<String, Object>>() {});
+            return response.getBody();
+        } catch (Exception e) {
+            log.error("Flask retrain call failed: {}", e.getMessage());
+            return Map.of("success", false, "error", e.getMessage());
         }
     }
 }

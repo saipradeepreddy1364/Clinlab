@@ -6,6 +6,7 @@ import com.diaslab.service.ProcedureService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -57,5 +58,36 @@ public class ProcedureController {
     public ResponseEntity<Map<String, Object>> getProcedures() {
         Map<String, Object> procedures = procedureService.getProcedures();
         return ResponseEntity.ok(procedures);
+    }
+
+    // ── Add single procedure step ──────────────────────────────────────────────
+    @PostMapping("/procedures/add")
+    public ResponseEntity<Map<String, Object>> addProcedureStep(
+            @RequestBody Map<String, String> request) {
+        Map<String, Object> result = procedureService.addProcedureStep(request);
+        return ResponseEntity.ok(result);
+    }
+
+    // ── Upload procedures CSV ──────────────────────────────────────────────────
+    @PostMapping(value = "/procedures/upload-csv", consumes = "multipart/form-data")
+    public ResponseEntity<Map<String, Object>> uploadProceduresCsv(
+            @RequestParam("file") MultipartFile file) {
+        Map<String, Object> result = procedureService.uploadProceduresCsv(file);
+        return ResponseEntity.ok(result);
+    }
+
+    // ── Upload procedures Document (PDF, Word, TXT) ────────────────────────────
+    @PostMapping(value = "/procedures/upload-document", consumes = "multipart/form-data")
+    public ResponseEntity<Map<String, Object>> uploadProceduresDocument(
+            @RequestParam("file") MultipartFile file) {
+        Map<String, Object> result = procedureService.uploadProceduresDocument(file);
+        return ResponseEntity.ok(result);
+    }
+
+    // ── Retrain ML model ───────────────────────────────────────────────────────
+    @PostMapping("/procedures/retrain")
+    public ResponseEntity<Map<String, Object>> retrainModel() {
+        Map<String, Object> result = procedureService.retrainModel();
+        return ResponseEntity.ok(result);
     }
 }

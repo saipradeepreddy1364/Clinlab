@@ -4,6 +4,8 @@ import pickle
 import json
 import os
 import csv
+import subprocess
+import sys
 
 app = Flask(__name__)
 CORS(app)
@@ -98,12 +100,26 @@ with open("saved_model/model_metadata.json", "r") as f:
     metadata = json.load(f)
 print(f"Model loaded: {metadata['best_model']}")
 
+def reload_model():
+    global model, le, metadata
+    print("Reloading dental lab model...")
+    with open("saved_model/dental_model.pkl", "rb") as f:
+        model = pickle.load(f)
+    with open("saved_model/label_encoder.pkl", "rb") as f:
+        le = pickle.load(f)
+    with open("saved_model/model_metadata.json", "r") as f:
+        metadata = json.load(f)
+    print(f"Model reloaded: {metadata['best_model']}")
+    build_lookup()
+
 # ============================================================
 # Build Lookup Table from CSV
 # ============================================================
 LOOKUP = {}
 
 def build_lookup():
+    global LOOKUP
+    LOOKUP.clear()
     csv_path = "dental_steps.csv"
     if not os.path.exists(csv_path):
         print("CSV not found — lookup table empty")
@@ -323,6 +339,281 @@ def auto_select():
         "matched_subtype":        matched_subtype,
         "suggested_current_step": "Start"
     })
+
+
+# ============================================================
+# Procedure Management & Retraining Endpoints
+# ============================================================
+
+@app.route("/api/procedures/add", methods=["POST"])
+def add_procedure_step():
+    data = request.get_json() or {}
+    procedure = data.get("procedure", "").strip()
+    subtype = data.get("subtype", "").strip()
+    current_step = data.get("current_step", "").strip()
+    next_step = data.get("next_step", "").strip()
+
+    if not procedure or not current_step or not next_step:
+        return jsonify({"error": "procedure, current_step, and next_step are required"}), 400
+
+    csv_path = "dental_steps.csv"
+    file_exists = os.path.exists(csv_path)
+    try:
+        with open(csv_path, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(["procedure", "subtype", "current_step", "next_step"])
+            writer.writerow([procedure, subtype, current_step, next_step])
+        
+        build_lookup()
+        return jsonify({
+            "success": True, 
+            "message": "Step added successfully", 
+            "lookup_entries": len(LOOKUP)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ============================================================
+# PDF/Word Document Text Extraction & Parsing Helpers
+# ============================================================
+
+import zipfile
+import xml.etree.ElementTree as ET
+import re
+import fitz  # PyMuPDF
+
+def extract_text_from_pdf(file_bytes):
+    try:
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
+        texts = []
+        for page in doc:
+            texts.append(page.get_text())
+        return "\n".join(texts)
+    except Exception as e:
+        print(f"PDF extraction error: {e}")
+        return ""
+
+def extract_text_from_docx(file_bytes):
+    try:
+        import io
+        with zipfile.ZipFile(io.BytesIO(file_bytes)) as z:
+            xml_content = z.read('word/document.xml')
+            root = ET.fromstring(xml_content)
+            texts = []
+            ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+            for p in root.findall('.//w:p', ns):
+                p_text = []
+                for t in p.findall('.//w:t', ns):
+                    if t.text:
+                        p_text.append(t.text)
+                if p_text:
+                    texts.append("".join(p_text))
+            return "\n".join(texts)
+    except Exception as e:
+        print(f"Docx extraction error: {e}")
+        return ""
+
+def parse_document_text(text, filename=""):
+    procedure = ""
+    subtype = "General"
+    
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
+    
+    for line in lines:
+        proc_match = re.match(r"^(?:Procedure|Name)\s*:\s*(.*)$", line, re.IGNORECASE)
+        if proc_match:
+            procedure = proc_match.group(1).strip()
+        sub_match = re.match(r"^(?:Subtype|Type)\s*:\s*(.*)$", line, re.IGNORECASE)
+        if sub_match:
+            subtype = sub_match.group(1).strip()
+            
+    if not procedure:
+        base = os.path.basename(filename)
+        procedure = os.path.splitext(base)[0].replace("_", " ").replace("-", " ").title()
+        
+    steps = []
+    for line in lines:
+        step_match = re.match(r"^(?:Step\s*\d+\s*[:\.-]?\s*|\d+[\.\)]\s*)(.*)$", line, re.IGNORECASE)
+        if step_match:
+            step_name = step_match.group(1).strip()
+            if step_name:
+                steps.append(step_name)
+                
+    transitions = []
+    if not steps:
+        for line in lines:
+            if "->" in line:
+                parts = [p.strip() for p in line.split("->") if p.strip()]
+                if len(parts) >= 2:
+                    for i in range(len(parts) - 1):
+                        transitions.append((parts[i], parts[i+1]))
+                        
+    if steps and not transitions:
+        transitions.append(("Start", steps[0]))
+        for i in range(len(steps) - 1):
+            transitions.append((steps[i], steps[i+1]))
+        transitions.append((steps[-1], "Completed"))
+        
+    if not steps and not transitions and len(lines) > 2:
+        candidate_steps = []
+        for line in lines:
+            if not re.match(r"^(?:Procedure|Name|Subtype|Type)\s*:", line, re.IGNORECASE):
+                if 3 < len(line) < 60:
+                    candidate_steps.append(line)
+        if len(candidate_steps) >= 2:
+            transitions.append(("Start", candidate_steps[0]))
+            for i in range(len(candidate_steps) - 1):
+                transitions.append((candidate_steps[i], candidate_steps[i+1]))
+            transitions.append((candidate_steps[-1], "Completed"))
+            
+    return procedure, subtype, transitions
+
+
+@app.route("/api/procedures/upload-document", methods=["POST"])
+def upload_procedures_document():
+    file = request.files.get("file")
+    if not file:
+        return jsonify({"error": "No file uploaded under key 'file'"}), 400
+
+    filename = file.filename or ""
+    ext = filename.split(".")[-1].lower() if "." in filename else ""
+    
+    file_bytes = file.read()
+    text = ""
+    
+    if ext == "pdf":
+        text = extract_text_from_pdf(file_bytes)
+    elif ext in ["docx", "doc"]:
+        text = extract_text_from_docx(file_bytes)
+    elif ext in ["txt", "text", "csv"]:
+        try:
+            text = file_bytes.decode("utf-8")
+        except Exception:
+            text = file_bytes.decode("latin1", errors="ignore")
+    else:
+        return jsonify({"error": f"Unsupported file type: {ext}. Only PDF, Word (.docx) and TXT files are allowed."}), 400
+
+    if not text.strip():
+        return jsonify({"error": "Failed to extract text from the document, or the document is empty."}), 400
+
+    # Parse extracted text using rule-based parser
+    procedure, subtype, transitions = parse_document_text(text, filename)
+    
+    if not transitions:
+        return jsonify({
+            "error": "Could not identify any procedure step transitions in the document. "
+                     "Please check that steps are listed sequentially (e.g. '1. Step One', 'Step 2: Step Two') "
+                     "or separated by arrows (e.g. 'Step A -> Step B')."
+        }), 400
+
+    csv_path = "dental_steps.csv"
+    file_exists = os.path.exists(csv_path)
+    
+    rows_added = 0
+    try:
+        with open(csv_path, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(["procedure", "subtype", "current_step", "next_step"])
+            for curr, nxt in transitions:
+                writer.writerow([procedure, subtype, curr, nxt])
+                rows_added += 1
+
+        build_lookup()
+        return jsonify({
+            "success": True,
+            "message": f"Successfully parsed '{procedure}' ({subtype}) with {rows_added} step transitions.",
+            "procedure": procedure,
+            "subtype": subtype,
+            "transitions_count": rows_added,
+            "lookup_entries": len(LOOKUP)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/procedures/upload-csv", methods=["POST"])
+def upload_procedures_csv():
+    file = request.files.get("file")
+    if not file:
+        return jsonify({"error": "No file uploaded under key 'file'"}), 400
+
+    try:
+        import io
+        stream = io.StringIO(file.stream.read().decode("utf-8"), newline=None)
+        reader = csv.DictReader(stream)
+
+        # Validate headers
+        required = ["procedure", "subtype", "current_step", "next_step"]
+        if not all(col in reader.fieldnames for col in required):
+            return jsonify({"error": f"CSV must contain headers: {', '.join(required)}"}), 400
+
+        csv_path = "dental_steps.csv"
+        file_exists = os.path.exists(csv_path)
+
+        rows_added = 0
+        with open(csv_path, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(["procedure", "subtype", "current_step", "next_step"])
+            for row in reader:
+                # Get fields and strip, default empty subtype to empty string
+                proc = (row.get("procedure") or "").strip()
+                sub = (row.get("subtype") or "").strip()
+                curr = (row.get("current_step") or "").strip()
+                nxt = (row.get("next_step") or "").strip()
+                if proc and curr and nxt:
+                    writer.writerow([proc, sub, curr, nxt])
+                    rows_added += 1
+
+        build_lookup()
+        return jsonify({
+            "success": True, 
+            "message": f"Successfully imported {rows_added} steps from CSV.",
+            "lookup_entries": len(LOOKUP)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/procedures/retrain", methods=["POST"])
+def retrain_model():
+    try:
+        # Run training script in background
+        script_path = os.path.join(os.path.dirname(__file__), "train_model.py")
+        print(f"Triggering model retraining at {script_path}...")
+        
+        result = subprocess.run(
+            [sys.executable, script_path], 
+            capture_output=True, 
+            text=True, 
+            check=True
+        )
+        
+        # Reload model parameters in memory
+        reload_model()
+        
+        return jsonify({
+            "success": True,
+            "message": "Model retrained and reloaded successfully!",
+            "metadata": metadata
+        })
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr or e.output or str(e)
+        print(f"Retraining failed: {error_msg}")
+        return jsonify({
+            "success": False,
+            "error": "Model retraining script execution failed",
+            "details": error_msg
+        }), 500
+    except Exception as e:
+        print(f"Retraining error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 
 if __name__ == "__main__":
