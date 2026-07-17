@@ -22,6 +22,15 @@ const showAlert = (title: string, message: string, actions?: any[]) => {
 const Signup = () => {
   const navigation = useNavigation<any>();
   const scrollRef = useRef<ScrollView>(null);
+
+  const scrollToTop = () => {
+    if (Platform.OS === 'web') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    }
+  };
+
   const [loading, setLoading] = useState(false);
   const [authType, setAuthType] = useState<"doctor" | "organization" | "lab">("doctor");
   const [organizations, setOrganizations] = useState<any[]>([]);
@@ -205,7 +214,7 @@ const Signup = () => {
   // Scroll to top when switching auth type
   useEffect(() => {
     const timer = setTimeout(() => {
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      scrollToTop();
     }, 100);
     return () => clearTimeout(timer);
   }, [authType]);
@@ -296,37 +305,37 @@ const Signup = () => {
   const handleSignup = async () => {
     const trimmedEmail = formData.email.trim().toLowerCase();
     if (!trimmedEmail || !formData.password || !formData.confirmPassword || !formData.name || !formData.phone) {
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      scrollToTop();
       showAlert("Missing Fields", "Please fill in all mandatory fields.");
       return;
     }
 
     if (!trimmedEmail.endsWith("@gmail.com")) {
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      scrollToTop();
       showAlert("Invalid Email Domain", "Email must be a valid Google email address ending with @gmail.com");
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      scrollToTop();
       showAlert("Passwords Mismatch", "The passwords you entered do not match.");
       return;
     }
 
     if (authType === "doctor" && (!formData.specialization || !formData.organization.id)) {
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      scrollToTop();
       showAlert("Clinical Details Required", "Please select your role and organization.");
       return;
     }
 
     if (authType === "lab" && !formData.organization.id) {
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      scrollToTop();
       showAlert("Organization Required", "Please select your organization.");
       return;
     }
 
     if ((authType === "doctor" || authType === "lab") && !profileImage) {
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      scrollToTop();
       showAlert("Profile Photo Required", "Please upload a profile photo.");
       return;
     }
@@ -1086,7 +1095,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         height: '100vh',
-        overflow: 'hidden',
+        overflowY: 'auto',
       }
     })
   },
@@ -1094,7 +1103,7 @@ const styles = StyleSheet.create({
     flex: 1,
     ...Platform.select({
       web: {
-        height: '100%',
+        height: 'auto',
       }
     })
   },
@@ -1103,7 +1112,7 @@ const styles = StyleSheet.create({
     width: '100%',
     ...Platform.select({
       web: {
-        height: '100%',
+        height: 'auto',
       }
     })
   },
