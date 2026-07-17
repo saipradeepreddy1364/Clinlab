@@ -312,7 +312,6 @@ const Signup = () => {
 
     if (!trimmedEmail.endsWith("@gmail.com")) {
       scrollToTop();
-      showAlert("Invalid Email Domain", "Email must be a valid Google email address ending with @gmail.com");
       return;
     }
 
@@ -766,7 +765,12 @@ const Signup = () => {
             <View style={[styles.inputGroup, { flex: 1 }]}>
               <Text style={styles.label}>Email</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  formData.email.length > 0 && 
+                  !formData.email.trim().toLowerCase().endsWith("@gmail.com") && 
+                  { borderColor: '#EF4444', borderWidth: 1.5 }
+                ]}
                 placeholder="Enter email address"
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -775,6 +779,11 @@ const Signup = () => {
                 onChangeText={(v) => setFormData({ ...formData, email: v })}
                 placeholderTextColor="#94A3B8"
               />
+              {formData.email.length > 0 && !formData.email.trim().toLowerCase().endsWith("@gmail.com") && (
+                <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '500', marginTop: 4 }}>
+                  Must end with @gmail.com
+                </Text>
+              )}
             </View>
             <View style={[styles.inputGroup, { flex: 1 }]}>
               <Text style={styles.label}>Phone</Text>
