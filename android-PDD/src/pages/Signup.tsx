@@ -1037,18 +1037,6 @@ const Signup = () => {
               </View>
               
               <TouchableOpacity 
-                style={[styles.heroButton, { width: '100%', marginBottom: 16 }]} 
-                onPress={handleVerifyOtp}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.heroButtonText}>Verify & Continue</Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity 
                 onPress={async () => {
                   setLoading(true);
                   const { error } = await supabase.auth.resend({
@@ -1059,9 +1047,21 @@ const Signup = () => {
                   if (error) showAlert("Resend Failed", error.message);
                   else showAlert("Sent!", "A new 6-digit code has been sent to your email.");
                 }}
-                style={{ alignSelf: 'center', padding: 15, width: '100%', alignItems: 'center' }}
+                style={{ alignSelf: 'center', padding: 12, width: '100%', alignItems: 'center', marginBottom: 12 }}
               >
                 <Text style={{ color: '#0EA5E9', fontSize: 15, fontWeight: '700', textDecorationLine: 'underline' }}>Resend Verification Code</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.heroButton, { width: '100%', marginBottom: 16 }]} 
+                onPress={handleVerifyOtp}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.heroButtonText}>Verify & Continue</Text>
+                )}
               </TouchableOpacity>
 
               <View style={{ height: 20 }} />
