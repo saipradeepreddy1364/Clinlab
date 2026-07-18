@@ -283,7 +283,7 @@ ${fileAnalysis ? `Clinical Files/Radiograph Analysis: ${fileAnalysis}` : ""}
 `;
 
     try {
-      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || "https://pdd-backend-ztqc.onrender.com";
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || "https://clinlab-x3q4.onrender.com";
       const response = await fetch(`${backendUrl}/api/auto-select`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

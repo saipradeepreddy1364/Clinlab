@@ -21,7 +21,7 @@ const isInvalidBackend = (val: string) => {
 };
 
 if (isInvalidBackend(BACKEND_URL)) {
-  BACKEND_URL = "https://pdd-backend-ztqc.onrender.com";
+  BACKEND_URL = "https://clinlab-x3q4.onrender.com";
 }
 
 // ---------------------------------------------------------------------------
