@@ -10,10 +10,6 @@
       "**/*"
     ],
     "runtimeVersion": "1.0.0",
-    "updates": {
-      "url": "https://u.expo.dev/9f929eea-8036-43bb-a66c-f33488f8c36d",
-      "checkAutomatically": "NEVER"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.clinlab.aiassist",
@@ -55,9 +51,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "9f929eea-8036-43bb-a66c-f33488f8c36d"
+        "projectId": "8d0c6779-48a4-4a69-8c5b-01135f0537dc"
       }
     },
-    "owner": "pradeep-palagiri"
+    "owner": "venkatasaipradeepreddyp"
   }
 }
