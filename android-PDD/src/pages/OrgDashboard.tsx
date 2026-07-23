@@ -768,7 +768,7 @@ const OrgDashboard = ({ route }: any) => {
         <Modal visible={addStepModalVisible} transparent animationType="slide">
           <View style={styles.modalOverlay}>
             <View style={[styles.modalSheet, { maxHeight: "85%" }]}>
-              <View style={styles.modalHeader}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                 <Text style={styles.modalTitle}>Add Procedure Step</Text>
                 <TouchableOpacity onPress={() => setAddStepModalVisible(false)}>
                   <X size={20} color="#64748B" />
@@ -1626,6 +1626,18 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "700",
+  },
+  // ── Add Step Modal Styles ──
+  modalSheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0F172A",
   },
 });
 
