@@ -112,6 +112,92 @@ def reload_model():
     print(f"Model reloaded: {metadata['best_model']}")
     build_lookup()
 
+import requests
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://zruonfdnfvgmaebanvdm.supabase.co")
+SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpydW9uZmRuZnZnbWFlYmFudmRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMTczODksImV4cCI6MjA5MjU5MzM4OX0.AfutlmSt6ix8TNm0Lc70P2R2U554CXSaa7DxPyY8Hz4")
+
+def save_custom_steps_to_supabase(rows):
+    """
+    Saves custom procedure step tuples to Supabase REST API for permanent persistence across Render cold starts.
+    """
+    if not rows:
+        return
+    url = f"{SUPABASE_URL}/rest/v1/custom_procedures"
+    headers = {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+    }
+    payload = []
+    for row in rows:
+        if len(row) >= 4:
+            payload.append({
+                "procedure": str(row[0]),
+                "subtype": str(row[1]),
+                "current_step": str(row[2]),
+                "next_step": str(row[3])
+            })
+    try:
+        res = requests.post(url, json=payload, headers=headers, timeout=5)
+        print(f"Supabase Sync: Saved {len(payload)} custom steps (Status: {res.status_code})")
+    except Exception as e:
+        print(f"Supabase Sync Notice: {e}")
+
+def sync_custom_steps_from_supabase():
+    """
+    Fetches custom procedure steps stored in Supabase and merges them into local dental_steps.csv on server boot.
+    """
+    url = f"{SUPABASE_URL}/rest/v1/custom_procedures?select=procedure,subtype,current_step,next_step"
+    headers = {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
+    }
+    try:
+        res = requests.get(url, headers=headers, timeout=5)
+        if res.ok:
+            data = res.json()
+            if data and isinstance(data, list):
+                csv_path = "dental_steps.csv"
+                existing = set()
+                if os.path.exists(csv_path):
+                    with open(csv_path, "r", encoding="utf-8") as f:
+                        r = csv.DictReader(f)
+                        for row in r:
+                            existing.add((
+                                row.get("procedure", "").strip().lower(),
+                                row.get("subtype", "").strip().lower(),
+                                row.get("current_step", "").strip().lower(),
+                                row.get("next_step", "").strip().lower()
+                            ))
+                
+                new_rows = []
+                for item in data:
+                    tup = (
+                        item.get("procedure", "").strip().lower(),
+                        item.get("subtype", "").strip().lower(),
+                        item.get("current_step", "").strip().lower(),
+                        item.get("next_step", "").strip().lower()
+                    )
+                    if tup not in existing:
+                        new_rows.append([
+                            item.get("procedure", "").strip(),
+                            item.get("subtype", "").strip(),
+                            item.get("current_step", "").strip(),
+                            item.get("next_step", "").strip()
+                        ])
+                        existing.add(tup)
+                
+                if new_rows:
+                    with open(csv_path, "a", newline="", encoding="utf-8") as f:
+                        writer = csv.writer(f)
+                        for nr in new_rows:
+                            writer.writerow(nr)
+                    print(f"Supabase Sync: Merged {len(new_rows)} persistent procedure steps into local dataset!")
+    except Exception as e:
+        print(f"Supabase Sync Read Notice: {e}")
+
 # ============================================================
 # Build Lookup Table from CSV
 # ============================================================
@@ -120,6 +206,7 @@ LOOKUP = {}
 def build_lookup():
     global LOOKUP
     LOOKUP.clear()
+    sync_custom_steps_from_supabase()
     csv_path = "dental_steps.csv"
     if not os.path.exists(csv_path):
         print("CSV not found — lookup table empty")
@@ -365,6 +452,7 @@ def add_procedure_step():
                 writer.writerow(["procedure", "subtype", "current_step", "next_step"])
             writer.writerow([procedure, subtype, current_step, next_step])
         
+        save_custom_steps_to_supabase([(procedure, subtype, current_step, next_step)])
         build_lookup()
         return jsonify({
             "success": True, 
@@ -526,6 +614,7 @@ def upload_procedures_document():
     file_exists = os.path.exists(csv_path)
     
     rows_added = 0
+    rows_to_save = []
     try:
         with open(csv_path, "a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
@@ -533,8 +622,10 @@ def upload_procedures_document():
                 writer.writerow(["procedure", "subtype", "current_step", "next_step"])
             for curr, nxt in transitions:
                 writer.writerow([procedure, subtype, curr, nxt])
+                rows_to_save.append((procedure, subtype, curr, nxt))
                 rows_added += 1
 
+        save_custom_steps_to_supabase(rows_to_save)
         build_lookup()
         return jsonify({
             "success": True,
@@ -568,6 +659,7 @@ def upload_procedures_csv():
         file_exists = os.path.exists(csv_path)
 
         rows_added = 0
+        csv_rows_to_save = []
         with open(csv_path, "a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             if not file_exists:
@@ -580,8 +672,10 @@ def upload_procedures_csv():
                 nxt = (row.get("next_step") or "").strip()
                 if proc and curr and nxt:
                     writer.writerow([proc, sub, curr, nxt])
+                    csv_rows_to_save.append((proc, sub, curr, nxt))
                     rows_added += 1
 
+        save_custom_steps_to_supabase(csv_rows_to_save)
         build_lookup()
         return jsonify({
             "success": True, 
