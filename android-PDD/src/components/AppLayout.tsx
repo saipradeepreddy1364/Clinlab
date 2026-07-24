@@ -42,10 +42,9 @@ const doctorTabs: Tab[] = [
 const orgTabs: Tab[] = [
   { name: "OrgDashboard", label: "Overview", icon: LayoutGrid },
   { name: "OrgDoctors", label: "Doctors", icon: Users },
+  { name: "Procedures", label: "Add Procedures", icon: ListChecks, primary: true },
   { name: "OrgCases", label: "Cases", icon: ClipboardList },
-  { name: "Procedures", label: "Add Procedures", icon: ListChecks },
   { name: "OrgReports", label: "Reports", icon: FileSearch },
-  { name: "Insights", label: "Insights", icon: BarChart3 },
 ];
 
 const labTabs: Tab[] = [

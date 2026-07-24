@@ -88,12 +88,6 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace 'com.clinlab.aiassist'
-    sourceSets {
-        main {
-            java.srcDirs += 'src/main/java'
-            kotlin.srcDirs += 'src/main/java'
-        }
-    }
     defaultConfig {
         applicationId 'com.clinlab.aiassist'
         minSdkVersion rootProject.ext.minSdkVersion
