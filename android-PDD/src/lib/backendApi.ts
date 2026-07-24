@@ -54,15 +54,29 @@ export interface WorkflowResponse {
 // Fetch helpers
 // ---------------------------------------------------------------------------
 
+async function fetchWithRetry(url: string, options?: RequestInit, retries = 3, delayMs = 3000): Promise<Response> {
+  let lastError: any;
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url, options);
+      if (res.ok) return res;
+      lastError = new Error(`HTTP ${res.status}: ${res.statusText}`);
+    } catch (err) {
+      lastError = err;
+    }
+    if (i < retries - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastError;
+}
+
 /**
  * Fetches all procedure names and their available subtypes.
  * GET /api/procedures
  */
 export async function fetchProcedures(): Promise<ProceduresResponse> {
-  const res = await fetch(`${BACKEND_URL}/api/procedures`);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch procedures (${res.status})`);
-  }
+  const res = await fetchWithRetry(`${BACKEND_URL}/api/procedures`);
   return res.json() as Promise<ProceduresResponse>;
 }
 
@@ -75,10 +89,7 @@ export async function fetchWorkflow(
   subtype: string
 ): Promise<WorkflowResponse> {
   const params = new URLSearchParams({ procedure, subtype });
-  const res = await fetch(`${BACKEND_URL}/api/workflow?${params.toString()}`);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch workflow (${res.status})`);
-  }
+  const res = await fetchWithRetry(`${BACKEND_URL}/api/workflow?${params.toString()}`);
   return res.json() as Promise<WorkflowResponse>;
 }
 
@@ -107,7 +118,7 @@ export interface RetrainResponse {
  * GET /api/model-info
  */
 export async function fetchModelInfo(): Promise<ModelMetadata> {
-  const res = await fetch(`${BACKEND_URL}/api/model-info`);
+  const res = await fetchWithRetry(`${BACKEND_URL}/api/model-info`);
   if (!res.ok) {
     throw new Error(`Failed to fetch model info (${res.status})`);
   }
@@ -148,7 +159,7 @@ export async function uploadProceduresCsv(
 ): Promise<{ success: boolean; message: string }> {
   const formData = new FormData();
   if (typeof window !== "undefined") {
-    const blob = new Blob([fileBytes], { type: mimeType });
+    const blob = new Blob([fileBytes as any], { type: mimeType });
     formData.append("file", blob, fileName);
   } else {
     // For Native Expo:
@@ -182,7 +193,7 @@ export async function uploadProceduresDocument(
 ): Promise<{ success: boolean; message: string; procedure?: string; subtype?: string; transitions_count?: number }> {
   const formData = new FormData();
   if (typeof window !== "undefined") {
-    const blob = new Blob([fileBytes], { type: mimeType });
+    const blob = new Blob([fileBytes as any], { type: mimeType });
     formData.append("file", blob, fileName);
   } else {
     // For Native Expo:
