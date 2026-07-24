@@ -421,6 +421,7 @@ def parse_document_text(text, filename=""):
     
     lines = [line.strip() for line in text.split("\n") if line.strip()]
     
+    # 1. Check for explicit header fields if present
     for line in lines:
         proc_match = re.match(r"^(?:Procedure|Name)\s*:\s*(.*)$", line, re.IGNORECASE)
         if proc_match:
@@ -429,19 +430,24 @@ def parse_document_text(text, filename=""):
         if sub_match:
             subtype = sub_match.group(1).strip()
             
+    # Fallback procedure name from filename if not explicitly provided
     if not procedure:
         base = os.path.basename(filename)
         procedure = os.path.splitext(base)[0].replace("_", " ").replace("-", " ").title()
         
     steps = []
+    
+    # 2. Check for explicitly numbered or bulleted lines
     for line in lines:
-        step_match = re.match(r"^(?:Step\s*\d+\s*[:\.-]?\s*|\d+[\.\)]\s*)(.*)$", line, re.IGNORECASE)
+        step_match = re.match(r"^(?:Step\s*\d+\s*[:\.-]?\s*|\d+[\.\)]\s*|[-•*]\s*)(.*)$", line, re.IGNORECASE)
         if step_match:
             step_name = step_match.group(1).strip()
             if step_name:
                 steps.append(step_name)
                 
     transitions = []
+    
+    # 3. Check for arrow syntax (Step A -> Step B)
     if not steps:
         for line in lines:
             if "->" in line:
@@ -450,23 +456,31 @@ def parse_document_text(text, filename=""):
                     for i in range(len(parts) - 1):
                         transitions.append((parts[i], parts[i+1]))
                         
+    # 4. Paragraph & Natural Language Sentence Extraction
+    if not steps and not transitions:
+        # Split entire text into sentences by period, semicolon, or newlines
+        raw_sentences = re.split(r'[;\.\n]+', text)
+        cleaned_steps = []
+        for s in raw_sentences:
+            s_clean = s.strip()
+            # Remove common introductory transition words
+            s_clean = re.sub(r'^(?:First|Next|Then|Afterwards|Subsequently|Finally|Additionally|In addition|Second|Third|Fourth|Lastly)[,\s]+', '', s_clean, flags=re.IGNORECASE).strip()
+            # Capitalize first letter
+            if s_clean and len(s_clean) > 3 and len(s_clean) < 120:
+                s_clean = s_clean[0].upper() + s_clean[1:]
+                # Avoid duplicate adjacent steps
+                if not cleaned_steps or cleaned_steps[-1].lower() != s_clean.lower():
+                    cleaned_steps.append(s_clean)
+        
+        if len(cleaned_steps) >= 2:
+            steps = cleaned_steps
+
+    # 5. Build sequential transitions from steps
     if steps and not transitions:
         transitions.append(("Start", steps[0]))
         for i in range(len(steps) - 1):
             transitions.append((steps[i], steps[i+1]))
         transitions.append((steps[-1], "Completed"))
-        
-    if not steps and not transitions and len(lines) > 2:
-        candidate_steps = []
-        for line in lines:
-            if not re.match(r"^(?:Procedure|Name|Subtype|Type)\s*:", line, re.IGNORECASE):
-                if 3 < len(line) < 60:
-                    candidate_steps.append(line)
-        if len(candidate_steps) >= 2:
-            transitions.append(("Start", candidate_steps[0]))
-            for i in range(len(candidate_steps) - 1):
-                transitions.append((candidate_steps[i], candidate_steps[i+1]))
-            transitions.append((candidate_steps[-1], "Completed"))
             
     return procedure, subtype, transitions
 
